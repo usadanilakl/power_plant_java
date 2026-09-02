@@ -24,6 +24,8 @@ export interface LotoBoxModel extends BasePermitModel {
   lotoEquipmentSystem: string | null;
   lotoStatus: string | null;
   lotoWorkScope: string | null;
+  /** External Red Tag Enterprise LOTO number the operator set via Red Tag Bypass. */
+  lotoRedTagNum: string | null;
 
   // LED status fields (not persisted, from LED status API)
   r?: number;
@@ -53,6 +55,7 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
   lotoEquipmentSystem: string | null;
   lotoStatus: string | null;
   lotoWorkScope: string | null;
+  lotoRedTagNum: string | null;
 
   // LED status fields
   r?: number;
@@ -80,6 +83,7 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
     this.lotoEquipmentSystem = data.lotoEquipmentSystem ?? null;
     this.lotoStatus = data.lotoStatus ?? null;
     this.lotoWorkScope = data.lotoWorkScope ?? null;
+    this.lotoRedTagNum = data.lotoRedTagNum ?? null;
     this.r = data.r;
     this.g = data.g;
     this.b = data.b;
@@ -107,6 +111,7 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
       lotoEquipmentSystem: this.lotoEquipmentSystem,
       lotoStatus: this.lotoStatus,
       lotoWorkScope: this.lotoWorkScope,
+      lotoRedTagNum: this.lotoRedTagNum,
     };
   }
 
@@ -135,6 +140,7 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
       lotoEquipmentSystem: json.lotoEquipmentSystem ?? null,
       lotoStatus: json.lotoStatus ?? null,
       lotoWorkScope: json.lotoWorkScope ?? null,
+      lotoRedTagNum: json.lotoRedTagNum ?? null,
       r: json.r,
       g: json.g,
       b: json.b,

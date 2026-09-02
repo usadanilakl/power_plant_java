@@ -18,6 +18,7 @@ public final class PwaLotoDtos {
      * verify any of them (the list shows it read-only rather than letting them work and fail at submit).
      */
     public record PwaLotoListItem(Long id, String permitNumber, String requestor, String equipmentSystem, String status,
+                                  Integer boxNumber, String redTagNum,
                                   List<String> phases, GrabInfo hangGrab, GrabInfo verifyGrab, int walkdownSessions,
                                   int pointCount, int hungCount, int verifiedCount, boolean verifyBlockedForMe) {}
 

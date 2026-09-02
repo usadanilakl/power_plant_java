@@ -456,6 +456,20 @@ export class ServerApiService {
     );
   }
 
+  /**
+   * The plant's system vocabulary, for the work-request wizard's "a whole system" answer.
+   *
+   * <p>Anonymous, like the rest of /api/pwa/work-request/** - submission is deliberately open, so
+   * this must be too or it 401s exactly the contractors who need it.
+   */
+  getSystems(): Observable<any[]> {
+    return this.http.get<any>(`${this.baseUrl}/api/pwa/work-request/systems`).pipe(
+      timeout(10000),
+      map(r => r.responseData),
+      catchError(this.handleError)
+    );
+  }
+
   getWorkCategoryProfiles(): Observable<PwaWorkCategoryProfileDto[]> {
     return this.http.get<{ responseData: PwaWorkCategoryProfileDto[] }>(
       `${this.baseUrl}/api/pwa/work-category-hazards/all`

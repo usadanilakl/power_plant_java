@@ -18,6 +18,7 @@ import com.dk_power.power_plant_java.sevice.angular.file.upload.UploadStrategy;
 import com.dk_power.power_plant_java.sevice.angular.file.upload.UploadStrategyRegistry;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
 import com.dk_power.power_plant_java.sevice.file.TrashService;
+import com.dk_power.power_plant_java.sevice.maximo.HeicImageConverter;
 import com.dk_power.power_plant_java.util.FileUtil;
 import com.dk_power.power_plant_java.util.PerceptualHashUtil;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -64,6 +65,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final ValueRepo valueRepo;
     private final TrashService trashService;
     private final UploadStrategyRegistry uploadStrategyRegistry;
+    private final HeicImageConverter heicImageConverter;
     // Field injection (not constructor) so we can use @Lazy — FileObjectSyncHandler
     // pulls in HubFileService which pulls file services back through the sync
     // chain. Lombok's @RequiredArgsConstructor does NOT copy @Lazy onto the
@@ -432,6 +434,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                                         Boolean convertToJpg, Boolean splitMultiPage) throws IOException {
 
         if (file == null) throw new RuntimeException("File is required");
+        file = convertHeicIfNeeded(file);
 
         String originalFilename = file.getOriginalFilename();
         String fileNumber = fileMapper.convertFileNumberArrayToString(fileDto.getFileNumber());
@@ -631,7 +634,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
         List<FileDto> uploadedFiles = new ArrayList<>();
 
-        for (MultipartFile file : files) {
+        for (MultipartFile rawFile : files) {
+            MultipartFile file = convertHeicIfNeeded(rawFile);
             String originalFilename = file.getOriginalFilename();
             if (originalFilename == null) {
                 logger.warn("Skipping file with null filename");
@@ -2509,6 +2513,47 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             byLower.putIfAbsent(t.toLowerCase(), t);
         }
         return new LinkedHashSet<>(byLower.values());
+    }
+
+    /**
+     * iPhone HEIC → JPEG at intake so the rest of the pipeline (whitelist, strategies, on-disk write)
+     * sees ordinary JPEG bytes. Non-HEIC input passes through untouched. Same converter Maximo uses
+     * — bundled JavaCPP FFmpeg self-extracts on first call. See {@link HeicImageConverter}.
+     */
+    private MultipartFile convertHeicIfNeeded(MultipartFile file) {
+        if (file == null || file.isEmpty()) return file;
+        String name = file.getOriginalFilename();
+        String type = file.getContentType();
+        try {
+            byte[] bytes = file.getBytes();
+            HeicImageConverter.Result r = heicImageConverter.ensureJpeg(bytes, name, type);
+            // Same reference back = no conversion happened; skip the wrapper allocation.
+            if (r.bytes() == bytes && java.util.Objects.equals(r.fileName(), name)
+                    && java.util.Objects.equals(r.contentType(), type)) {
+                return file;
+            }
+            return new InMemoryMultipartFile(r.fileName(), r.contentType(), r.bytes());
+        } catch (IOException e) {
+            logger.warn("HEIC preflight read failed for {} — passing through unchanged: {}", name, e.getMessage());
+            return file;
+        }
+    }
+
+    /**
+     * Trivial in-memory {@link MultipartFile} for the {@link HeicImageConverter} preflight — we swap
+     * bytes/name/content-type without loading Spring's test-scope {@code MockMultipartFile}.
+     */
+    private record InMemoryMultipartFile(String name, String contentType, byte[] content) implements MultipartFile {
+        @Override public String getName() { return "file"; }
+        @Override public String getOriginalFilename() { return name; }
+        @Override public String getContentType() { return contentType; }
+        @Override public boolean isEmpty() { return content == null || content.length == 0; }
+        @Override public long getSize() { return content == null ? 0 : content.length; }
+        @Override public byte[] getBytes() { return content == null ? new byte[0] : content; }
+        @Override public java.io.InputStream getInputStream() {
+            return new java.io.ByteArrayInputStream(content == null ? new byte[0] : content);
+        }
+        @Override public void transferTo(File dest) throws IOException { Files.write(dest.toPath(), getBytes()); }
     }
 
 }

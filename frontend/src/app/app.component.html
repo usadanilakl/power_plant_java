@@ -1,4 +1,8 @@
 <app-catchup-banner></app-catchup-banner>
+<!-- Template-less. Watches the sync SSE for a work request the requester revoked or edited,
+     and raises a notice on whatever page is open. Nothing cascades when a request is revoked,
+     so without this the only signal is a status on a row the operator may not be looking at. -->
+<app-wr-status-watch></app-wr-status-watch>
 <router-outlet></router-outlet>
 <app-print-layout></app-print-layout>
 <app-global-message></app-global-message>

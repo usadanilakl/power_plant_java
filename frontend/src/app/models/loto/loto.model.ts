@@ -26,6 +26,8 @@ export interface LotoModel extends BasePermitModel {
   snapshots: LotoSnapshotDto[];
   wasModifiedDuringActive: boolean;
   closeDisposition: string | null;
+  /** External Red Tag Enterprise LOTO number the operator entered via Red Tag Bypass. */
+  redTagNum: string | null;
 }
 
 export class LotoDto extends BasePermitDto implements LotoModel {
@@ -43,6 +45,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
   snapshots: LotoSnapshotDto[];
   wasModifiedDuringActive: boolean;
   closeDisposition: string | null;
+  redTagNum: string | null;
 
   constructor(data: Partial<LotoModel> = {}) {
     super(data);
@@ -59,6 +62,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
     this.snapshots = data.snapshots ?? [];
     this.wasModifiedDuringActive = data.wasModifiedDuringActive ?? false;
     this.closeDisposition = data.closeDisposition ?? null;
+    this.redTagNum = data.redTagNum ?? null;
   }
 
   // Override toJson method
@@ -74,7 +78,8 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       date: this.date,
       personnel: this.personnel,
       sourceStandardId: this.sourceStandardId,
-      sourceStandardName: this.sourceStandardName
+      sourceStandardName: this.sourceStandardName,
+      redTagNum: this.redTagNum,
     };
   }
 
@@ -100,6 +105,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       snapshots: Array.isArray(json.snapshots) ? json.snapshots.map((s: any) => LotoSnapshotDto.fromJson(s)) : [],
       wasModifiedDuringActive: json.wasModifiedDuringActive ?? false,
       closeDisposition: json.closeDisposition ?? null,
+      redTagNum: json.redTagNum ?? null,
     });
   }
 
@@ -120,6 +126,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
     return [
       { id: 'id', header: 'ID', accessorKey: 'id' },
       { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
+      { id: 'redTagNum', header: 'Red Tag #', accessorKey: 'redTagNum' },
       { id: 'name', header: 'LOTO Number', accessorKey: 'name' },
       { id: 'permitStatus', header: 'Status', accessorKey: 'permitStatus.name' },
       { id: 'equipmentSystem', header: 'Equipment/System', accessorKey: 'equipmentSystem' },

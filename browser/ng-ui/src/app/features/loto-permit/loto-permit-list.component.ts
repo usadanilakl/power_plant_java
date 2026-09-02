@@ -30,6 +30,8 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
                     <div class="pl-body" (click)="go(b.phase, it)">
                       <div class="pl-name">{{ it.permitNumber || ('Permit #' + it.id) }}</div>
                       <div class="pl-meta">
+                        @if (it.boxNumber) { <span class="pl-chip pl-chip-box">Box #{{ it.boxNumber }}</span> }
+                        @if (it.redTagNum) { <span class="pl-chip pl-chip-rt">RT #{{ it.redTagNum }}</span> }
                         @if (it.equipmentSystem) { <span class="pl-chip">{{ it.equipmentSystem }}</span> }
                         @if (it.requestor) { <span class="pl-chip">{{ it.requestor }}</span> }
                         @if (it.status) { <span class="pl-chip">{{ it.status }}</span> }
@@ -64,6 +66,8 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
                   <div class="pl-body" (click)="view(it)">
                     <div class="pl-name">{{ it.permitNumber || ('Permit #' + it.id) }}</div>
                     <div class="pl-meta">
+                      @if (it.boxNumber) { <span class="pl-chip pl-chip-box">Box #{{ it.boxNumber }}</span> }
+                      @if (it.redTagNum) { <span class="pl-chip pl-chip-rt">RT #{{ it.redTagNum }}</span> }
                       @if (it.status) { <span class="pl-chip">{{ it.status }}</span> }
                       @if (it.equipmentSystem) { <span class="pl-chip">{{ it.equipmentSystem }}</span> }
                       @if (it.requestor) { <span class="pl-chip">{{ it.requestor }}</span> }
@@ -99,6 +103,8 @@ import { Phase, PwaLotoListItem } from './loto-permit.model';
     .pl-name { font-size: 15px; font-weight: 600; color: var(--primary-text); }
     .pl-meta { margin-top: 4px; }
     .pl-chip { display: inline-block; background: var(--secondary-background); color: var(--secondary-text); border-radius: 4px; padding: 2px 7px; margin: 2px 4px 0 0; font-size: 12px; }
+    .pl-chip-box { background: var(--accent-color); color: var(--on-solid); font-weight: 700; }
+    .pl-chip-rt { background: var(--danger-text, #ef5350); color: #fff; font-weight: 700; }
     .pl-grab { margin-top: 5px; color: var(--warning-text); font-size: 12px; }
     .pl-blocked { margin-top: 5px; color: var(--danger-text); font-size: 12px; }
     .pl-go.view { background: var(--secondary-text); }

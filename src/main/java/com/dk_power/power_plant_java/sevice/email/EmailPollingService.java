@@ -49,7 +49,7 @@ public class EmailPollingService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Value("${email.graph.from}")
+    @Value("${email.graph.from:}")
     private String monitoredEmail;
 
     private LocalDateTime lastPollTime = LocalDateTime.now().minusDays(7);

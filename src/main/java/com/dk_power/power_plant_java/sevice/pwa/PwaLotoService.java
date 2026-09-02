@@ -87,7 +87,7 @@ public class PwaLotoService {
             // Skipping it elsewhere keeps this list no more expensive than it was when it showed less.
             int walkdownSessions = p.phases.contains("WALKDOWN") ? walkdownService.listForLoto(loto.getId()).size() : 0;
             out.add(new PwaLotoListItem(loto.getId(), loto.getPermitNumber(), loto.getLotoRequestor(),
-                    loto.getEquipmentSystem(), p.status, p.phases,
+                    loto.getEquipmentSystem(), p.status, loto.getBoxNumber(), loto.getRedTagNum(), p.phases,
                     grabInfo(loto.getId(), "HANG"), grabInfo(loto.getId(), "VERIFY"),
                     walkdownSessions,
                     p.pointCount, p.hungCount, p.verifiedCount, p.verifyBlockedForMe));

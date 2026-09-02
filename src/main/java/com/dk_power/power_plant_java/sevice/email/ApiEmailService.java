@@ -40,7 +40,7 @@ public class ApiEmailService {
     private final ClientCertificateCredential credential;
     private final RestTemplate restTemplate;
 
-    @Value("${email.graph.from}")
+    @Value("${email.graph.from:}")
     private String fromEmail;
 
     @Value("${email.graph.fallback:}")
@@ -49,6 +49,25 @@ public class ApiEmailService {
     private String emailAccessToken;
     private Instant emailTokenExpirationTime;
 
+    /**
+     * No credential available - the application still starts, email simply does not send.
+     *
+     * <p>Without this the application CANNOT BOOT on a machine with no
+     * {@code application-secrets.properties}. {@code @Autowired(required = false)} on the only
+     * constructor does not make it optional: with no no-arg fallback Spring treats it as required
+     * and the context dies with "Parameter 0 of constructor in ApiEmailService required a bean of
+     * type ClientCertificateCredential". This is the same shape
+     * {@code SharePointCertificateAccess} already runs in production.
+     *
+     * <p>WARN, not info: on a hub this means inbound email ingestion is off too, which is a real
+     * capability loss and should be visible in the log rather than buried.
+     */
+    public ApiEmailService() {
+        this.credential = null;
+        this.restTemplate = null;
+        log.warn("[Email] No certificate credential - email sending and inbound ingestion are DISABLED.");
+    }
+
     @Autowired(required = false)
     public ApiEmailService(
             ClientCertificateCredential credential,
@@ -56,6 +75,20 @@ public class ApiEmailService {
         this.credential = credential;
         this.restTemplate = restTemplate;
         log.info("[Email] ApiEmailService created with certificate credential");
+    }
+
+    /**
+     * Whether this service can actually send.
+     *
+     * <p>Callers must check rather than relying on the send throwing. {@code EmailFacadeService}
+     * catches a send failure and falls through to {@code ManualEmailService}, which calls
+     * {@code Desktop.getDesktop().mail(...)} - on a headless hub that throws and is rethrown as a
+     * RuntimeException (rolling back the caller's transaction), and on an operator's desktop it
+     * pops a real mail-client window from a REST call. Neither is an acceptable consequence of
+     * simply having no credential configured.
+     */
+    public boolean isAvailable() {
+        return credential != null && restTemplate != null;
     }
 
     /**

@@ -22,6 +22,7 @@ import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.entities.maximo.RecurringPm;
 import com.dk_power.power_plant_java.dto.maximo.ReorderLineDto;
 import com.dk_power.power_plant_java.dto.maximo.ReorderResultDto;
+import com.dk_power.power_plant_java.sevice.maximo.AmmoniaOffloadService;
 import com.dk_power.power_plant_java.sevice.maximo.ChemInventoryReorderService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoBundleService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoDoclinksAdapter;
@@ -82,6 +83,7 @@ public class PwaMaximoController {
     private final RecurringPmService recurringPms;
     private final MaximoFormService forms;
     private final MaximoFormCompletionService completion;
+    private final AmmoniaOffloadService ammoniaOffload;
     private final MaximoPmAuditService pmAudit;
     private final ChemInventoryReorderService reorder;
     private final UserRepo userRepo;
@@ -713,6 +715,34 @@ public class PwaMaximoController {
         } catch (Exception e) {
             log.warn("[PWA-Maximo] pm-completed-history {} failed: {}", pmnum, e.getMessage());
             return ResponseEntity.ok(new NgApiResponse<>(List.of(), "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** One form template by its formKey (the mobile ammonia section renders its fields; null if unknown). */
+    @GetMapping("/forms/template")
+    public ResponseEntity<NgApiResponse<MaximoFormTemplateDto>> formTemplate(@RequestParam("formKey") String formKey) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(forms.getTemplateByFormKey(formKey), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] form template {} failed: {}", formKey, e.getMessage());
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    // ── Ammonia offload (standing WO + checklist form) ─────────────────────────
+
+    /**
+     * The single standing "Ammonia Offloads" work order every completed offload checklist attaches to — resolved
+     * from Maximo (by marker) or created once. The phone submits the {@code AMMONIA_OFFLOAD} form against this WO.
+     */
+    @GetMapping("/ammonia/work-order")
+    public ResponseEntity<NgApiResponse<MaximoWorkOrderDto>> ammoniaWorkOrder(
+            @RequestParam(value = "siteid", required = false) String siteid) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ammoniaOffload.resolveOrCreate(siteid), "ok"));
+        } catch (Exception e) {
+            log.warn("[PWA-Maximo] ammonia WO resolve/create failed: {}", e.getMessage());
+            return ResponseEntity.status(502).body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }
 

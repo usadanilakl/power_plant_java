@@ -22,6 +22,14 @@ public class EmailFacadeService {
      * @param request Email request with to/from/cc/subject/body/attachments
      */
     public void sendEmail(EmailRequest request) {
+        // Short-circuit when email is not configured at all. Falling through to the manual client
+        // would open a mail window on an operator's machine, or throw on a headless hub - see
+        // ApiEmailService.isAvailable().
+        if (!apiEmailService.isAvailable()) {
+            log.warn("[Email] Not configured - skipping email to {} (subject: {})",
+                    request.getTo(), request.getSubject());
+            return;
+        }
         try {
             apiEmailService.sendEmail(request);
             log.info("[Email] Email sent via API to {}", request.getTo());
@@ -44,6 +52,10 @@ public class EmailFacadeService {
      * Falls back to the manual email client on API failure, same as {@link #sendEmail}.
      */
     public void sendEmailLarge(EmailRequest request) {
+        if (!apiEmailService.isAvailable()) {
+            log.warn("[Email] Not configured - skipping large email to {}", request.getTo());
+            return;
+        }
         try {
             apiEmailService.sendEmailWithLargeAttachments(request);
             log.info("[Email] Large-attachment email sent via API to {}", request.getTo());

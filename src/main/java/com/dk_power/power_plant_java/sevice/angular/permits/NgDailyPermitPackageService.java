@@ -858,37 +858,59 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     // --- LOTO Board ---
 
     public List<Map<String, Object>> getActiveLotosForBoard() {
+        // Iterate LOTOs directly by their OWN permitStatus, not by parent package status. The old
+        // package-first pass invisibly dropped every LOTO whose parent package had rolled into
+        // "Closed"/"Expired"/anything-not-listed — so the table would show fewer rows than the
+        // box grid (which never cared about package status). Also catches LOTOs with no package
+        // association at all.
         List<Map<String, Object>> result = new ArrayList<>();
-        List<DailyPermitPackage> allPackages = dailyPermitPackageRepo.findAll();
 
-        for (DailyPermitPackage pkg : allPackages) {
-            String status = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
-            // Building is included so LOTOs still being prepared show up on the board — operators
-            // often want visibility into what's in the pipeline, not just what's currently hung.
-            if (!"Active".equals(status) && !"Test".equals(status) && !"Building".equals(status)) continue;
-            if (pkg.getLotos() == null || pkg.getLotos().isEmpty()) continue;
-
+        // Build a {lotoId -> parent package} lookup once, from ALL packages. The relation is
+        // M2M on the package side (daily_permit_package_lotos); we just take the first parent
+        // for the package-derived columns (packageNumber / packageStatus / workArea). Packages
+        // are typically 1:many with LOTOs in practice, so "first" is stable in operator view.
+        Map<Long, DailyPermitPackage> parentByLotoId = new HashMap<>();
+        for (DailyPermitPackage pkg : dailyPermitPackageRepo.findAll()) {
+            if (pkg.getLotos() == null) continue;
             for (Loto loto : pkg.getLotos()) {
-                Map<String, Object> info = new LinkedHashMap<>();
-                info.put("id", loto.getId());
-                info.put("permitNumber", loto.getPermitNumber());
-                info.put("equipmentSystem", loto.getEquipmentSystem());
-                info.put("lotoRequestor", loto.getLotoRequestor());
-                info.put("date", loto.getDate());
-                info.put("boxNumber", loto.getBoxNumber());
-                info.put("lockCount", loto.getLocks() != null ? loto.getLocks().size() : 0);
-                info.put("pointCount", loto.getLotoPointOrder() != null ? loto.getLotoPointOrder().size() : 0);
-                info.put("packageId", pkg.getId());
-                info.put("packageNumber", pkg.getPermitNumber());
-                info.put("packageStatus", status);
-                // WorkArea from package's work requests
-                String workAreaName = pkg.getWorkRequests().stream()
-                        .filter(wr -> wr.getWorkArea() != null)
+                if (loto == null || loto.getId() == null) continue;
+                parentByLotoId.putIfAbsent(loto.getId(), pkg);
+            }
+        }
+
+        for (Loto loto : lotoRepo.findAll()) {
+            if (loto == null || Boolean.TRUE.equals(loto.getDeleted())) continue;
+            String lotoStatus = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : "Building";
+            // Building is included so LOTOs still being prepared show up on the board — operators
+            // want visibility into what is in the pipeline, not just what is currently hung.
+            if (!"Active".equals(lotoStatus) && !"Test".equals(lotoStatus) && !"Building".equals(lotoStatus)) continue;
+
+            DailyPermitPackage pkg = parentByLotoId.get(loto.getId());
+            String packageStatus = pkg != null && pkg.getPackageStatus() != null
+                    ? pkg.getPackageStatus().getName() : lotoStatus;
+            String workAreaName = null;
+            if (pkg != null && pkg.getWorkRequests() != null) {
+                workAreaName = pkg.getWorkRequests().stream()
+                        .filter(wr -> wr != null && wr.getWorkArea() != null)
                         .map(wr -> wr.getWorkArea().getName())
                         .findFirst().orElse(null);
-                info.put("workArea", workAreaName);
-                result.add(info);
             }
+
+            Map<String, Object> info = new LinkedHashMap<>();
+            info.put("id", loto.getId());
+            info.put("permitNumber", loto.getPermitNumber());
+            info.put("redTagNum", loto.getRedTagNum());
+            info.put("equipmentSystem", loto.getEquipmentSystem());
+            info.put("lotoRequestor", loto.getLotoRequestor());
+            info.put("date", loto.getDate());
+            info.put("boxNumber", loto.getBoxNumber());
+            info.put("lockCount", loto.getLocks() != null ? loto.getLocks().size() : 0);
+            info.put("pointCount", loto.getLotoPointOrder() != null ? loto.getLotoPointOrder().size() : 0);
+            info.put("packageId", pkg != null ? pkg.getId() : null);
+            info.put("packageNumber", pkg != null ? pkg.getPermitNumber() : null);
+            info.put("packageStatus", packageStatus);
+            info.put("workArea", workAreaName);
+            result.add(info);
         }
         return result;
     }

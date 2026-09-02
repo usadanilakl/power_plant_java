@@ -16,11 +16,12 @@ import { AttachmentDialogComponent } from "./shared/attachment-dialog/attachment
 import { ProcessWrDialogComponent } from "./shared/process-wr-dialog/process-wr-dialog.component";
 import { LotoPointBulkCreateDialogComponent } from "./features/loto-points/refactored/loto-point-bulk-create/loto-point-bulk-create-dialog.component";
 import { CatchupBannerComponent } from "./shared/catchup-banner/catchup-banner.component";
+import { WrStatusWatchComponent } from './shared/wr-status-watch/wr-status-watch.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
+  imports: [WrStatusWatchComponent, 
     RouterOutlet,
     PrintLayoutComponent,
     GlobalMessageComponent,

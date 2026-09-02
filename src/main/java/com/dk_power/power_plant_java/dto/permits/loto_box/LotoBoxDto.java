@@ -57,4 +57,10 @@ public class LotoBoxDto extends BaseDto {
     private String lotoEquipmentSystem;
     private String lotoStatus;
     private String lotoWorkScope;
+    /**
+     * External Red Tag Enterprise LOTO number the operator entered via the Red Tag Bypass. Kept
+     * separate from {@link #lotoPermitNumber} (our internal permit id) because during the transition
+     * period both need to be visible side-by-side on the box grid and permit list.
+     */
+    private String lotoRedTagNum;
 }

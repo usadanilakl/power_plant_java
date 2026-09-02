@@ -23,7 +23,7 @@ public class PwaEmailController {
 
     private final EmailFacadeService emailFacadeService;
 
-    @Value("${email.graph.from}")
+    @Value("${email.graph.from:}")
     private String operationsEmail;
 
     @Value("${email.fallback.cc:}")

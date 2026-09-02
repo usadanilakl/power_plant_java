@@ -36,6 +36,7 @@ type Tab = 'wo' | 'sr';
               <button class="mx-pm" (click)="goParts()">🔩 Parts</button>
               <button class="mx-pm" (click)="goOutage()">⚡ Outage</button>
               <button class="mx-pm" (click)="goToi()">📋 TOI</button>
+              <button class="mx-pm" (click)="goAmmonia()">🧪 Ammonia</button>
               <button class="mx-new" (click)="newRequest()">+ New</button>
             </div>
           </div>
@@ -162,17 +163,17 @@ type Tab = 'wo' | 'sr';
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; }
     .mx-container { padding: 0.85rem; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-    .mx-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.7rem; }
-    .mx-tabs { display: flex; gap: 0.3rem; }
+    .mx-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.7rem; }
+    .mx-tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; }
     .mx-tab { background: transparent; border: 1px solid var(--border-color); color: var(--secondary-text, #888); border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; }
     .mx-tab.active { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
-    .mx-actions { display: flex; gap: 0.35rem; }
+    .mx-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
     .mx-pm { background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); border-radius: 8px; padding: 0.4rem 0.6rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
     .mx-new { background: #27ae60; color: #fff; border: none; border-radius: 8px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
     .mx-search { width: 100%; box-sizing: border-box; padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem; background: var(--card-bg, var(--secondary-background)); color: var(--primary-text); }
-    .mx-filters { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
-    .mx-filters select { flex: 1; padding: 0.45rem 0.55rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; }
-    .mx-filters input.mx-subby { flex: 1.3; min-width: 8rem; padding: 0.45rem 0.55rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; }
+    .mx-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; }
+    .mx-filters select { flex: 1 1 6rem; min-width: 0; padding: 0.45rem 0.55rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; }
+    .mx-filters input.mx-subby { flex: 1 1 8rem; min-width: 0; padding: 0.45rem 0.55rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--secondary-background); color: var(--primary-text); font-family: inherit; box-sizing: border-box; }
     .mx-locfilter { margin-bottom: 0.8rem; }
     .mx-locfilter-label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--secondary-text, #888); margin-bottom: 0.35rem; }
     .mx-msg { text-align: center; color: var(--secondary-text, #888); padding: 2rem 1rem; }
@@ -350,6 +351,7 @@ export class MaximoPageComponent implements OnInit {
   goParts(): void { this.router.navigate(['/maximo/parts']); }
   goOutage(): void { this.router.navigate(['/maximo/outage']); }
   goToi(): void { this.router.navigate(['/maximo/toi']); }
+  goAmmonia(): void { this.router.navigate(['/maximo/ammonia']); }
 
   openWo(w: MaximoWorkOrder): void { this.woDetail.set(w); }
   refresh(): void { this.reload$.next(); }

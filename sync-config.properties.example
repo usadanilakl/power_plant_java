@@ -1,0 +1,10 @@
+# EXAMPLE ONLY - copy to sync-config.properties and edit.
+#
+# This file is read from the process WORKING DIRECTORY in @PostConstruct, AFTER Spring
+# has finished, so it BEATS every properties file and command-line argument. The real
+# file used to be tracked with enabled=true and a live hub URL, which meant every fresh
+# clone started pre-armed and pointed at production.
+#Sync server configuration - managed by application
+#Fri Feb 06 23:56:36 CST 2026
+sync.server.enabled=false
+sync.server.url=

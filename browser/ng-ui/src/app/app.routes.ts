@@ -296,6 +296,11 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {
+      path: 'maximo/ammonia',
+      loadComponent: () => import('./features/maximo/maximo-ammonia-page.component').then(m => m.MaximoAmmoniaPageComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
       path: 'rounds',
       loadComponent: () => import('./features/rounds/rounds-list.component').then(m => m.RoundsListComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]

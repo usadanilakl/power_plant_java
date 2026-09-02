@@ -132,15 +132,21 @@ public class MaximoFormService {
     }
 
     /**
-     * Save a submission draft (upsert by submissionKey = templateFormKey|wonum). Does NOT push to Maximo —
-     * that happens on completion (phase 3). A COMPLETED status may only be set by the completion bridge.
+     * Save a submission draft. Upsert by submissionKey, which defaults to {@code templateFormKey|wonum} (one live
+     * submission per WO+template — the PM case). A caller MAY supply its own {@code submissionKey} to force a
+     * DISTINCT submission each time against the SAME WO+form: a standing work order (e.g. Ammonia Offloads) that
+     * collects many completions of one checklist would otherwise collapse them onto a single row and no-op every
+     * completion after the first. Does NOT push to Maximo — that happens on completion. A COMPLETED status may
+     * only be set by the completion bridge.
      */
     public MaximoFormSubmissionDto saveDraft(MaximoFormSubmissionDto dto) {
         if (dto == null || dto.getTemplateFormKey() == null || dto.getTemplateFormKey().isBlank()
                 || dto.getWonum() == null || dto.getWonum().isBlank()) {
             throw new IllegalArgumentException("templateFormKey and wonum are required");
         }
-        String key = dto.getTemplateFormKey().trim() + "|" + dto.getWonum().trim();
+        String key = (dto.getSubmissionKey() != null && !dto.getSubmissionKey().isBlank())
+                ? dto.getSubmissionKey().trim()
+                : dto.getTemplateFormKey().trim() + "|" + dto.getWonum().trim();
         MaximoFormSubmission s = submissionRepo.findFirstBySubmissionKey(key).orElse(null);
         if (s == null) s = MaximoFormSubmission.builder().submissionKey(key).build();
         s.setTemplateFormKey(dto.getTemplateFormKey().trim());

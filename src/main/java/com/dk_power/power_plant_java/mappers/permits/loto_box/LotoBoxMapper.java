@@ -105,6 +105,7 @@ public class LotoBoxMapper implements BaseMapper {
             dto.setLotoPermitNumber(lotoEnt.getPermitNumber());
             dto.setLotoEquipmentSystem(lotoEnt.getEquipmentSystem());
             dto.setLotoWorkScope(lotoEnt.getWorkScope());
+            dto.setLotoRedTagNum(lotoEnt.getRedTagNum());
             if (lotoEnt.getPermitStatus() != null) {
                 dto.setLotoStatus(lotoEnt.getPermitStatus().getName());
             }

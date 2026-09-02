@@ -36,7 +36,6 @@ export class LotoBoxGridComponent implements OnInit {
   allBoxes = signal<LotoBoxDto[]>([]);
   isLoading = this.stateService.isLoading;
   statusMessage = this.stateService.statusMessage;
-  activeDropdown = signal<number | null>(null);
 
   editMode = signal(false);
   showInactive = signal(false);
@@ -109,14 +108,8 @@ export class LotoBoxGridComponent implements OnInit {
         }
       });
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('click', (event: MouseEvent) => {
-        const target = event.target as HTMLElement;
-        if (!target.closest('.box') && !target.closest('.box-modal')) {
-          this.activeDropdown.set(null);
-        }
-      });
-    }
+    // Outside-click dismissal used to belong to the click-dropdown; the unified detail modal
+    // owns its own backdrop click now, so there is nothing global to listen for.
   }
 
   private refreshCommentCounts(boxes: LotoBoxDto[]) {
@@ -149,25 +142,43 @@ export class LotoBoxGridComponent implements OnInit {
   onBoxClick(box: LotoBoxDto, event: Event) {
     event.stopPropagation();
     if (this.editMode()) {
-      this.openEditDialog(box);
-    } else {
-      this.toggleDropdown(box.number);
+      // Edit mode still routes populated boxes to the edit dialog; placeholders fall through to
+      // the unified detail dialog (which offers "+ Start New LOTO Here" — the useful placeholder
+      // action).
+      if (box.id) {
+        this.openEditDialog(box);
+        return;
+      }
     }
-  }
-
-  toggleDropdown(boxNumber: number) {
-    this.activeDropdown.set(this.activeDropdown() === boxNumber ? null : boxNumber);
+    // Unified click behavior (task #2): one dialog for everything — details, jump-to-LOTO,
+    // status/color, and "+ Start New LOTO Here" on an available box. Replaces the split
+    // click-opens-dropdown + i-button-opens-details flow.
+    this.openSidePanel(box, event);
   }
 
   setBoxStatus(box: LotoBoxDto, status: LotoBoxStatus, event: Event) {
     event.stopPropagation();
     this.stateService.setBoxStatus(box, status, true, true);
-    this.activeDropdown.set(null);
+  }
+
+  /**
+   * True if the box's LOTO status (or LED color mapping) matches the given status button — used
+   * to highlight the active status pill inside the unified dialog.
+   */
+  isCurrentStatus(box: LotoBoxDto, status: LotoBoxStatus): boolean {
+    const lotoStatus = box.lotoStatus?.toLowerCase();
+    if (lotoStatus) return lotoStatus === status.toLowerCase();
+    return false;
   }
 
   toggleManualOverride(box: LotoBoxDto, event: Event) {
     event.stopPropagation();
     this.stateService.toggleManualOverride(box);
+  }
+
+  onGridBackgroundClick() {
+    // No dropdown to dismiss any more — kept as a no-op so the template hook stays valid if we
+    // reintroduce a container-level popover later.
   }
 
   updateAllBoxes() {
@@ -206,9 +217,10 @@ export class LotoBoxGridComponent implements OnInit {
 
   openSidePanel(box: LotoBoxDto, event: Event) {
     event.stopPropagation();
-    if (!box.id) return;
+    // Placeholders (no DB row for this fixed slot) still open the dialog now — the only useful
+    // action is "+ Start New LOTO Here", and the template guards on isPlaceholder() to hide
+    // rows that require a saved box (locks, status controls, comments).
     this.selectedBox.set(box);
-    this.activeDropdown.set(null);
   }
 
   closeSidePanel() {
@@ -225,6 +237,17 @@ export class LotoBoxGridComponent implements OnInit {
     this.closeSidePanel();
   }
 
+  /**
+   * Open the LOTO permit page with this empty box pre-selected. LotoPermitComponent reads the
+   * newForBox query param on init and starts a fresh draft with boxNumber already set, so the
+   * operator can jump straight to "who / what / points" instead of hunting the box dropdown.
+   */
+  startNewLotoInBox(box: LotoBoxDto, event: Event) {
+    event.stopPropagation();
+    this.closeSidePanel();
+    this.router.navigate(['/loto/loto'], { queryParams: { newForBox: box.number } });
+  }
+
   // Picks the best label for a lock's assigned LOTO, with proper null handling
   // (so we never render the literal string "#null" or "LOTO #null").
   lockLotoLabel(lock: LockDto): string {
@@ -238,7 +261,6 @@ export class LotoBoxGridComponent implements OnInit {
 
   toggleEditMode() {
     this.editMode.set(!this.editMode());
-    this.activeDropdown.set(null);
   }
 
   toggleShowInactive() {

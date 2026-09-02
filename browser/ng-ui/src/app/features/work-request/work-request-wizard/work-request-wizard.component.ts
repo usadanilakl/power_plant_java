@@ -209,7 +209,7 @@ const MIN_LOCATION_TEXT = 3;
               words&rdquo; instead &mdash; an operator will match it up.
             </p>
             <div class="system-list">
-              @for (sys of filteredSystems(); track sys.id) {
+              @for (sys of filteredSystems(); track sys.name) {
                 <button type="button" class="system-option"
                         [class.active]="isSystemPicked(sys.name)"
                         (click)="pickSystem(sys.name)">

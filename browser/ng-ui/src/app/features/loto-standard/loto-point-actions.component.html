@@ -23,16 +23,31 @@
     }
     <div class="pa-panel-head">
       <button type="button"
-              class="pa-add"
+              class="pa-add pa-add-camera"
               [disabled]="photoUploading() || !isOnline()"
-              (click)="triggerPhotoPick()">
-        {{ photoUploading() ? 'Uploading…' : '+ Take / Upload Photo' }}
+              (click)="triggerCameraPick()">
+        {{ photoUploading() ? 'Uploading…' : '📷 Take Photo' }}
       </button>
+      <button type="button"
+              class="pa-add pa-add-library"
+              [disabled]="photoUploading() || !isOnline()"
+              (click)="triggerLibraryPick()"
+              title="Photos, videos, PDFs, and docs">
+        📎 Choose Files
+      </button>
+      <!-- Camera-first: capture="environment" jumps straight to the rear camera on mobile. -->
       <input #photoInput
              type="file"
              hidden
              accept="image/*"
              capture="environment"
+             multiple
+             (change)="onPhotoInputChange($event)" />
+      <!-- Library/files: no capture attribute so iOS/Android show Photo Library + Files + Camera. -->
+      <input #libraryInput
+             type="file"
+             hidden
+             accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
              multiple
              (change)="onPhotoInputChange($event)" />
     </div>

@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
+import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
@@ -440,6 +441,20 @@ public class PwaWorkRequestService {
         result.setStatus(entity.getPermitStatus() != null ? entity.getPermitStatus().getName() : "Unknown");
         result.setTimeSubmitted(entity.getTimeSubmitted());
         result.setSubmissionMethod(entity.getSharepointId() != null ? "sharepoint" : "local");
+
+        // Who processed it, and when. These two fields were declared on the DTO and never populated
+        // anywhere in the codebase, so a requester polling for status always saw null - and a test
+        // asserting them filled would have passed against a bug.
+        //
+        // Derived from the package rather than stored on the work request: being attached to a
+        // package IS what "processed" means here, and the package already carries the audit fields.
+        // No new column, nothing extra to keep in step, and it is correct for requests processed
+        // before this change too.
+        DailyPermitPackage pkg = entity.getDailyPermitPackage();
+        if (pkg != null) {
+            result.setProcessedAt(pkg.getDateCreated());
+            result.setProcessedBy(pkg.getCreatedBy());
+        }
         return result;
     }
 

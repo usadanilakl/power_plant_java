@@ -180,6 +180,27 @@ public class PwaWorkRequestController {
         }
     }
 
+    /**
+     * The plant's system vocabulary, for the wizard's "a whole system" answer.
+     *
+     * <p>Deliberately under {@code /api/pwa/work-request/**}, which is permitAll. Work-request
+     * submission is anonymous by design, so an authenticated endpoint would 401 exactly the
+     * contractors this picker exists for.
+     *
+     * <p>NOT the same thing as {@code GET /api/pwa/secured/loto-points/systems}, which returns
+     * distinct free-text {@code LotoPoint.system} strings and is PLANT/ADMIN-gated. Different
+     * source, different shape, different auth — do not merge the two vocabularies.
+     */
+    @GetMapping("/systems")
+    public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getSystems() {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(referenceDataService.getSystems(),
+                    "Systems retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "No systems found"));
+        }
+    }
+
     @GetMapping("/work-areas")
     public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getWorkAreas() {
         try {

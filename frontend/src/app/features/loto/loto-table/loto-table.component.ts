@@ -22,6 +22,8 @@ export class LotoTableComponent implements OnInit {
   columns: Column[] = [
     { id: 'id', header: 'ID', accessorKey: 'id' },
     { id: 'docNum', header: 'LOTO Number', accessorKey: 'docNum' },
+    { id: 'redTagNum', header: 'Red Tag #', accessorKey: 'redTagNum' },
+    { id: 'boxNumber', header: 'Box #', accessorKey: 'boxNumber' },
     { id: 'workScope', header: 'Description', accessorKey: 'workScope' },
     { id: 'status.name', header: 'Status', accessorKey: 'status.name' },
     { id: 'startDate', header: 'Start Date', accessorKey: 'startDate' },

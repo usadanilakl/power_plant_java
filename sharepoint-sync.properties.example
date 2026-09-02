@@ -1,0 +1,12 @@
+# EXAMPLE ONLY - copy to sharepoint-sync.properties and edit.
+#
+# This file is read from the process WORKING DIRECTORY in @PostConstruct, AFTER Spring
+# has finished, so it BEATS every properties file and command-line argument. The real
+# file used to be tracked with enabled=true and a live hub URL, which meant every fresh
+# clone started pre-armed and pointed at production.
+#SharePoint sync settings \u2014 managed via UI
+#Fri Feb 13 14:29:23 CST 2026
+enabled=false
+healthCheckIntervalMs=300000
+intervalMs=120000
+peerSyncIntervalSeconds=300

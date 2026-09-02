@@ -9,6 +9,7 @@ import { WorkAreaDto } from './work-area.model';
 import { SwHazards } from './safe-work.model';
 import { HotWorkMeasures, HotWorkProfile, hotWorkTypeLabels } from './hot-work.model';
 import { ConfinedSpaceHazards } from './confined-space.model';
+import { wrStatusStyle } from './work-request-status-style';
 
 /**
  * Model keys that can be rendered as a form field or a table column.
@@ -490,11 +491,10 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         header: 'Status',
         accessorKey: 'status',
         conditionalStyling: (item: any, column: Column) => {
-          if (item.status === 'Active') return { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' };
-          if (item.status === 'Expired') return { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' };
-          if (item.status === 'Closed') return { 'background-color': 'var(--status-not-processed)', 'color': 'var(--primary-text)' };
-          if (item.status === 'Archived') return { 'background-color': 'var(--status-incomplete)', 'color': 'var(--primary-text)' };
-          return { 'background-color': '', 'color': '' };
+          // Shared map - see work-request-status-style.ts. The inline version here handled only
+          // four statuses, so Revoked and Updated (the requester changed something) looked
+          // identical to an untouched row.
+          return wrStatusStyle(item.status);
         }
       },
       name: { id: 'name', header: 'Name', accessorKey: 'name' },

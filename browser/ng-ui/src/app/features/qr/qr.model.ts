@@ -33,6 +33,13 @@ export interface QrMatch {
   tagNumber: string;
   description?: string;
   drawings: PointDrawing[];
+  /**
+   * Attachment count for the match, so the drawing viewer's actions pill can render "📸 3" without
+   * a preflight round-trip. Equipment matches always report 0 today (see backend note).
+   */
+  photoCount?: number;
+  /** Polymorphic Comment count (entityType="LotoPoint") for the match. 0 for equipment. */
+  commentCount?: number;
 }
 
 /** Result of resolving a tag. An empty `matches` is a valid answer: the label is not in the system. */

@@ -9,6 +9,34 @@ const DATA_DIR = path.join('docs', 'browser', 'data');
 const PUBLIC_DATA_DIR = path.join('public', 'data');
 const BACKUP_DIR = path.join('.deploy-backup', 'data');
 
+
+/**
+ * Is this data file effectively empty?
+ *
+ * <p>The old test was `size <= 3`, which does not catch the placeholder these files actually ship
+ * as: `[ ]` plus CRLF is FIVE bytes. So a real deployed file was treated as non-empty when it was
+ * empty, and - worse - a good local file was overwritten by an empty remote one and then never
+ * restored, because the restore used the same broken test.
+ *
+ * <p>Only .json is parsed: this directory also holds work-area-map-image.jpg at ~7 MB, and
+ * JSON.parse on that would kill the deploy. Parse failures count as NOT empty, so a file we cannot
+ * understand is never thrown away.
+ */
+function isEmptyDataFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return true;
+    if (!filePath.toLowerCase().endsWith('.json')) return fs.statSync(filePath).size === 0;
+    const raw = fs.readFileSync(filePath, 'utf8').trim();
+    if (!raw) return true;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.length === 0;
+    if (parsed && typeof parsed === 'object') return Object.keys(parsed).length === 0;
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 function run(cmd) {
   console.log(`> ${cmd}`);
   execSync(cmd, { stdio: 'inherit' });
@@ -73,9 +101,7 @@ function restoreBackedUpData() {
       console.log(`  Restored ${file} from backup`);
     } else {
       // If file exists but is empty/tiny (e.g. "[]"), prefer backup if backup has data
-      const buildSize = fs.statSync(dest).size;
-      const backupSize = fs.statSync(src).size;
-      if (buildSize <= 3 && backupSize > 3) {
+      if (isEmptyDataFile(dest) && !isEmptyDataFile(src)) {
         fs.copyFileSync(src, dest);
         console.log(`  Restored ${file} from backup (build had empty placeholder)`);
       }
@@ -95,6 +121,10 @@ async function fetchLiveData() {
 
   // All known data files used by the app
   const ALL_DATA_FILES = [
+    // systems.json is listed only because the emptiness test above is now content-based. With the
+    // old `size <= 3` test, fetching this would have pulled the live 5-byte "[ ]" placeholder,
+    // failed the test, and clobbered a good local file.
+    'systems.json',
     'work-areas.json',
     'work-area-shapes.json',
     'work-area-map-image.jpg',
@@ -112,8 +142,7 @@ async function fetchLiveData() {
       console.log(`  Downloading ${file} from live site...`);
       const tempDest = dest + '.tmp';
       await download(`${BASE_URL}/${file}`, tempDest);
-      const size = fs.statSync(tempDest).size;
-      if (size <= 3 && fs.existsSync(dest) && fs.statSync(dest).size > 3) {
+      if (isEmptyDataFile(tempDest) && fs.existsSync(dest) && !isEmptyDataFile(dest)) {
         // Downloaded file is empty but local has data — keep local
         fs.unlinkSync(tempDest);
         console.log(`  ${file} from live site is empty, keeping local copy (${fs.statSync(dest).size} bytes)`);

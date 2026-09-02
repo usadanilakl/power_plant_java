@@ -46,7 +46,44 @@ public class PwaReferenceDataService {
     }
 
     public List<Map<String, Object>> getLocations() {
-        return valueService.getValuesByCategory("Location").stream()
+        // Blank/null names filtered for the same reason as toSystemMaps below: Map.of throws on a
+        // null value, so one bad row took out the whole endpoint.
+        return toIdNameMaps(valueService.getValuesByCategory("Location"));
+    }
+
+    /**
+     * The plant's SYSTEM vocabulary, for the PWA work-request wizard's "a whole system" answer.
+     *
+     * <p>Wrapped in a try/catch because {@code NgValueService.getValuesByCategory} THROWS when the
+     * category does not exist rather than returning empty — on a site that has never created the
+     * System category that would turn an optional picker into a failed request.
+     */
+    public List<Map<String, Object>> getSystems() {
+        try {
+            return toSystemMaps(valueService.getValuesByCategory("System"));
+        } catch (RuntimeException e) {
+            log.debug("[PWA Reference] System category unavailable: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * {@code Value} rows as {@code {id, name}}, skipping anything with no usable name.
+     *
+     * <p>Static, so the GitHub/Supabase publisher can share it without injecting this service —
+     * that edge would close a cycle through {@code NgValueService} back to the publisher, and the
+     * neighbouring {@code NgLotoPointService} already documents that exact breakage.
+     *
+     * <p>The blank filter is load-bearing twice over: {@code Map.of} NPEs on a null value, and the
+     * PWA sorts these with {@code localeCompare}, which throws on null.
+     */
+    public static List<Map<String, Object>> toSystemMaps(List<com.dk_power.power_plant_java.entities.categories.Value> values) {
+        return toIdNameMaps(values);
+    }
+
+    private static List<Map<String, Object>> toIdNameMaps(List<com.dk_power.power_plant_java.entities.categories.Value> values) {
+        return (values == null ? List.<com.dk_power.power_plant_java.entities.categories.Value>of() : values).stream()
+                .filter(v -> v != null && v.getName() != null && !v.getName().isBlank())
                 .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName()))
                 .toList();
     }

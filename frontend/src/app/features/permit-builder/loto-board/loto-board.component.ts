@@ -7,12 +7,20 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { GlobalMessageService } from '../../../shared/global-message/global-message.service';
+import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 
 @Component({
   selector: 'app-loto-board',
   standalone: true,
-  imports: [CommonModule, MatButtonToggleModule, MatButtonModule, MatIconModule, MatTooltipModule, LotoBoxGridComponent],
+  imports: [CommonModule, MatButtonToggleModule, MatButtonModule, MatIconModule, MatTooltipModule,
+    LotoBoxGridComponent, MainLayoutComponent, RouterMenuComponent],
   template: `
+    <app-main-layout header="LOTO Board">
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
+      <ng-container main-content>
         <div class="board-container">
           <div class="board-toolbar">
             <mat-button-toggle-group [value]="viewMode()" (change)="viewMode.set($event.value)">
@@ -46,6 +54,7 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
                 <thead>
                   <tr>
                     <th>Permit #</th>
+                    <th>Red Tag #</th>
                     <th>Equipment / System</th>
                     <th>Work Area</th>
                     <th>Package</th>
@@ -59,6 +68,7 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
                   @for (loto of lotos(); track loto.id) {
                     <tr>
                       <td class="permit-num">{{ loto.permitNumber }}</td>
+                      <td class="red-tag-cell">{{ loto.redTagNum || '-' }}</td>
                       <td>{{ loto.equipmentSystem || '-' }}</td>
                       <td>{{ loto.workArea || '-' }}</td>
                       <td class="pkg-num">{{ loto.packageNumber }}</td>
@@ -80,6 +90,8 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
             <app-loto-box-grid></app-loto-box-grid>
           }
         </div>
+      </ng-container>
+    </app-main-layout>
   `,
   styles: [`
     .board-container { padding: 16px; }
@@ -113,6 +125,7 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
     }
     .loto-table tr:hover td { background: rgba(255,255,255,0.03); }
     .permit-num { font-weight: 600; color: var(--accent-color, #82b1ff); }
+    .red-tag-cell { color: #ef5350; font-weight: 600; }
     .pkg-num { color: #aaa; }
     .center { text-align: center; }
 

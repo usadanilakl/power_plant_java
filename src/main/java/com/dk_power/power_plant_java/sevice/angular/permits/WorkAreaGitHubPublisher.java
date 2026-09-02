@@ -430,11 +430,12 @@ public class WorkAreaGitHubPublisher {
             log.debug("[PWA Publisher] System category not found yet, returning empty list");
             systems = List.of();
         }
-        List<Map<String, Object>> result = systems.stream()
-                .filter(v -> v.getName() != null && !v.getName().isBlank())
-                .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName()))
-                .collect(Collectors.toList());
-        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+        // Shared STATIC mapper, so the published snapshot and the live endpoint cannot drift.
+        // Static on purpose - injecting PwaReferenceDataService here would add
+        // publisher -> PwaReferenceDataService -> NgValueService -> ObjectProvider<publisher>,
+        // and this neighbourhood has already been broken once by exactly that kind of cycle.
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(
+                com.dk_power.power_plant_java.sevice.pwa.PwaReferenceDataService.toSystemMaps(systems));
     }
 
     private String buildLotoPointsJson() throws IOException {

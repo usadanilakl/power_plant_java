@@ -34,6 +34,18 @@ export class LotoPointApiService {
   }
 
   /**
+   * Fetch one photo's bytes with the PWA's JWT (via HttpClient interceptor). The raw
+   * {@code /uploads/**} URL on the hub is behind IIS auth and would 401 the PWA into a
+   * native credential prompt — same reason Maximo's {@code fetchWoAttachment} exists.
+   * Caller turns the {@link Blob} into an object URL for {@code <img [src]>}.
+   */
+  fetchPhotoContent(pointId: number, fileId: number): Observable<Blob> {
+    return this.http
+      .get(`${this.base}/${pointId}/photos/${fileId}/content`, { responseType: 'blob' })
+      .pipe(timeout(60000));
+  }
+
+  /**
    * Batch upload one or more photos. Backend attaches each FileObject to the
    * LOTO point's {@code pictures} M2M and populates name / system metadata
    * from the point's own description / systemValue.

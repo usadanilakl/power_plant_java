@@ -6,6 +6,7 @@ import { RfFormField } from '../../../../../models/ui/form-field.model';
 import { Option } from '../../../../../models/option.model';
 import { CurrentValueService } from '../../../../../services/current-value.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { wrStatusStyle } from '../../../../../models/permits/work-request-status-style';
 
 @Injectable({
   providedIn: 'root',
@@ -51,11 +52,10 @@ export class RfWorkRequestMapperService {
         filterable: true, sortable: true, width: 100,
         accessorFn: (item: WorkRequestDto) => item.status || 'N/A',
         conditionalStyling: (item: any) => {
-          if (item.status === 'Active') return { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' };
-          if (item.status === 'Expired') return { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' };
-          if (item.status === 'Closed') return { 'background-color': 'var(--status-not-processed)', 'color': 'var(--primary-text)' };
-          if (item.status === 'Archived') return { 'background-color': 'var(--status-incomplete)', 'color': 'var(--primary-text)' };
-          return { 'background-color': '', 'color': '' };
+          // Shared map - see work-request-status-style.ts. The inline version here handled only
+          // four statuses, so Revoked and Updated (the requester changed something) looked
+          // identical to an untouched row.
+          return wrStatusStyle(item.status);
         }
       },
       dateOfWorkToBePerformed: { id: 'dateOfWorkToBePerformed', header: 'Date of Work', accessorKey: 'dateOfWorkToBePerformed', filterable: true, sortable: true, width: 130 },

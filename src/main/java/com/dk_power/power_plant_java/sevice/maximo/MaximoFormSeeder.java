@@ -41,6 +41,7 @@ public class MaximoFormSeeder {
         out.add(formService.saveTemplate(emergencyDieselGeneratorTest()));
         out.add(formService.saveTemplate(sdiTest()));
         out.add(formService.saveTemplate(roProbeMonthlyPm()));
+        out.add(formService.saveTemplate(ammoniaOffload()));
         log.info("[MaximoForms] seeded {} procedure form(s)", out.size());
         return out;
     }
@@ -784,6 +785,94 @@ public class MaximoFormSeeder {
                             "Max Delta " + maxDelta + " — if the probe and sample differ by more than " + maxDelta
                                     + ", write a Service Request to calibrate this probe.");
         }
+    }
+
+    /**
+     * From the paper "JACKSON GENERATION AMMONIA CHECKLIST". An operator-performed checklist run each time an
+     * ammonia delivery truck offloads into a storage tank. Unlike the PM forms this is NOT tied to a scheduled
+     * work order — every completed offload attaches (PDF + worklog line) to ONE standing "Ammonia Offloads" work
+     * order (see {@link AmmoniaOffloadService}), so the form carries no {@code completeWoStatus} (the standing WO
+     * must never close).
+     *
+     * <p>Step 1 (driver safety-orientation + manifest) is captured by the Driver section, which the PWA prefills
+     * from the OnLocation contractor directory so the operator can confirm the driver's orientation is current
+     * before starting. The remaining procedure steps are per-step attestation checkboxes (required), with the
+     * paper's HAZARD column folded into each label; the two "record control room / local tank level" steps add
+     * reading fields that land in the WO worklog.
+     */
+    private MaximoFormTemplateDto ammoniaOffload() {
+        Fields f = new Fields();
+
+        f.section("Offload")
+                .add("offload_date", "Date", "date", null, null, true)
+                .add("offload_time", "Time", "text", null, null, true)
+                .add("operator", "Operator", "text", null, "worklog", true)
+                .radio("tank", "Ammonia tank being filled", true, "North", "South", "Both");
+
+        // PPE is a hard prerequisite on the paper — a single required attestation before the steps.
+        f.section("PPE required")
+                .checkbox("ppe_confirmed", "PPE donned: hard hat, chemical gloves, eye protection, chemical suit, "
+                        + "and PAPR respirator", true);
+
+        // Driver section = Step 1 (verify driver safety orientation + manifest). The PWA prefills the name/company
+        // and the orientation answer from the contractor directory (Airgas), so this is the "is this driver cleared"
+        // check the operator does before anything is connected.
+        f.section("Driver (Step 1 — verify safety orientation & manifest)")
+                .add("driver_name", "Driver name", "text", null, "worklog", true)
+                .add("driver_company", "Company", "text", null, null, false)
+                .radio("driver_orientation_current", "Driver safety orientation up to date "
+                        + "(confirmed in the contractor directory)?", true, "Yes", "No")
+                .checkbox("manifest_verified", "Delivery manifest verified", true);
+
+        // The 14 procedure steps as required per-step checkboxes. Hazard column folded into the label.
+        // {procedure, hazard}
+        String[][] steps = {
+                {"Verify driver safety orientation complete and verify manifest.", "General safety & chemical exposure"},
+                {"Escort driver to delivery area. Cordon off area and secure delivery truck with chocks.", "Chemical offload / exposure"},
+                {"Align tank to receive ammonia. Verify tank isolation (open), vapor return (close), and ammonia fill valve (closed) positions.", "Chemical spill / tank overflow"},
+                {"Record control room tank level and local level (below).", "Chemical tank overflow"},
+                {"Verify with control room there is enough storage capacity to receive ammonia.", "Chemical tank overflow"},
+                {"Verify and show driver operation of Snappy Joe valves and safety showers.", "Chemical splashes / emergency response"},
+                {"Inspect hoses and cam lock fittings. Verify truck is properly grounded. Allow driver to connect hoses.", "Chemical spill / exposure"},
+                {"Verify cam locks are secured and ensure a bucket is available to catch any minor drips.", "Chemical spill / exposure"},
+                {"Open vapor return, ammonia fill, and Snappy Joe valves.", "Chemical spill / tank overflow / exposure"},
+                {"Inform CRO and commence offload; operator is to stay in area. Verify tank level increase and ammonia flow periodically.", "Chemical spill / tank overflow"},
+                {"Once offload is complete, record control room tank level and local level (below).", "Chemical tank overflow"},
+                {"Allow tank driver to drain hoses then isolate Snappy Joe, ammonia fill, and vapor return valves.", "Chemical spill / exposure"},
+                {"Ensure area is cleaned and any drips or spills are cleaned up. Sign delivery receipt as applicable.", "House keeping"},
+                {"Verify chocks are removed and escort driver offsite.", "General safety & vehicle accidents"},
+        };
+        f.section("Procedure steps — initial (check) each as it is completed");
+        for (int i = 0; i < steps.length; i++) {
+            int n = i + 1;
+            f.checkbox("step" + n, n + ". " + steps[i][0] + "  (Hazard: " + steps[i][1] + ")", true);
+            if (n == 4) {
+                f.number("s4_control_room_level", "Step 4 — control room tank level", null, "reading")
+                        .number("s4_local_level", "Step 4 — local level", null, "reading");
+            } else if (n == 11) {
+                f.number("s11_control_room_level", "Step 11 — control room tank level (offload complete)", null, "reading")
+                        .number("s11_local_level", "Step 11 — local level (offload complete)", null, "reading");
+            }
+        }
+
+        f.section("Lead CRO review")
+                .add("lead_cro", "Lead CRO review & sign (name)", "text", null, null, false)
+                .add("lead_cro_date", "Date", "date", null, null, false)
+                .textarea("notes", "Notes / observations", "worklog");
+
+        return MaximoFormTemplateDto.builder()
+                .formKey("AMMONIA_OFFLOAD")
+                .formName("Ammonia Offload Checklist")
+                .description("Jackson Generation ammonia offload checklist — completed each time an ammonia delivery "
+                        + "truck offloads into a storage tank (North / South / Both). Before starting, verify the "
+                        + "driver's safety orientation is current (checked against the contractor directory) and verify "
+                        + "the manifest. PPE required throughout: hard hat, chemical gloves, eye protection, chemical "
+                        + "suit, and PAPR respirator. Work the 14 steps in order, recording the control-room and local "
+                        + "tank levels before and after the offload. The completed checklist attaches to the standing "
+                        + "Ammonia Offloads work order; the Lead CRO reviews and signs.")
+                .active(true)
+                .fieldsJson(toJson(f.build()))
+                .build();
     }
 
     private static final class Fields {

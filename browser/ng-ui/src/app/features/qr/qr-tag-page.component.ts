@@ -67,7 +67,14 @@ import { QrMatch } from './qr.model';
 
     @if (activeMatch(); as m) {
       @if (m.drawings.length) {
-        <app-qr-drawing-host [title]="m.tagNumber" [drawings]="m.drawings" (exit)="leaveMatch()"></app-qr-drawing-host>
+        <app-qr-drawing-host
+          [title]="m.tagNumber"
+          [drawings]="m.drawings"
+          [pointId]="m.type === 'lotoPoint' ? m.id : null"
+          [pointLabel]="m.description ?? m.tagNumber"
+          [photoCount]="m.type === 'lotoPoint' ? (m.photoCount ?? 0) : null"
+          [commentCount]="m.type === 'lotoPoint' ? (m.commentCount ?? 0) : null"
+          (exit)="leaveMatch()"></app-qr-drawing-host>
       }
     }
   `,

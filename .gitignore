@@ -207,3 +207,9 @@ db/*.old
 # Windows at all - it makes `git clone` and `git worktree` fail outright. One got
 # committed by a stray `> nul` redirect; ignore it so it cannot come back.
 nul
+
+# Runtime-mutable overrides, read from the working directory in @PostConstruct - they beat
+# every Spring property and command-line arg. Tracked copies meant every clone started
+# armed and pointing at a real hub. Ship the .example files instead.
+sync-config.properties
+sharepoint-sync.properties

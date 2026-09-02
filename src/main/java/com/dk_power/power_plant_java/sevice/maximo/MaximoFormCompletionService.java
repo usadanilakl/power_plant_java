@@ -80,9 +80,14 @@ public class MaximoFormCompletionService {
         }
     }
 
-    /** The saveDraft dedup key ({@code templateFormKey|wonum}); null when either part is missing. */
+    /**
+     * The saveDraft dedup key. Matches {@link MaximoFormService#saveDraft}: a caller-supplied {@code submissionKey}
+     * wins (a standing WO's per-offload key), else {@code templateFormKey|wonum}; null when neither is available.
+     */
     private static String lockKey(MaximoFormSubmissionDto dto) {
-        if (dto == null || dto.getTemplateFormKey() == null || dto.getTemplateFormKey().isBlank()
+        if (dto == null) return null;
+        if (dto.getSubmissionKey() != null && !dto.getSubmissionKey().isBlank()) return dto.getSubmissionKey().trim();
+        if (dto.getTemplateFormKey() == null || dto.getTemplateFormKey().isBlank()
                 || dto.getWonum() == null || dto.getWonum().isBlank()) return null;
         return dto.getTemplateFormKey().trim() + "|" + dto.getWonum().trim();
     }

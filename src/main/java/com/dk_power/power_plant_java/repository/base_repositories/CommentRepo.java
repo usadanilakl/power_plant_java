@@ -7,4 +7,5 @@ import java.util.List;
 public interface CommentRepo extends BaseRepository<Comment> {
     List<Comment> findByEntityTypeAndEntityId(String entityType, Long entityId);
     List<Comment> findByEntityTypeAndEntityIdOrderByDateCreatedDesc(String entityType, Long entityId);
+    long countByEntityTypeAndEntityId(String entityType, Long entityId);
 }

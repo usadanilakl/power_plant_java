@@ -96,6 +96,7 @@ export class EquipmentDataService {
     this.loadLotoPoints();
     this.loadWorkAreas();
     this.loadLocations();
+    this.loadSystems();
   }
 
   private loadLotoPoints(): void {
@@ -164,9 +165,28 @@ export class EquipmentDataService {
    * which is enough.
    */
   private loadSystems(): void {
-    if (this.systemValues().length) return;
-    this.loadWithSupabaseFallback<PwaSystemEntry[]>('systems',
-      'data/systems.json', 'pwa_systems', systems => this.systemValues.set(systems));
+    // Hub FIRST, exactly like loadLotoPoints / loadWorkAreas / loadLocations. This used to go
+    // straight to the Supabase/static fallback with no hub call at all, and since
+    // public/data/systems.json shipped as a placeholder "[ ]" the picker was permanently empty.
+    //
+    // No `if (already loaded) return` guard, deliberately. loadLotoPoints has none either: with a
+    // guard the first successful paint - from cache or the static file - makes the signal non-empty,
+    // so every later call returns early and the hub is never asked again, which silently kills the
+    // retryFromServer backfill this method is registered for.
+    this.serverApi.getSystems().subscribe({
+      next: systems => {
+        if (systems && systems.length > 0) {
+          this.systemValues.set(systems);
+          localStorage.setItem('pwa_systems', JSON.stringify(systems));
+        }
+      },
+      error: () => {
+        if (this.systemValues().length === 0) {
+          this.loadWithSupabaseFallback<PwaSystemEntry[]>('systems',
+            'data/systems.json', 'pwa_systems', systems => this.systemValues.set(systems));
+        }
+      }
+    });
   }
 
   /** The plant's systems, alphabetical. Empty until the reference data has loaded. */

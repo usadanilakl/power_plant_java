@@ -50,6 +50,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .pa-add {
@@ -61,6 +62,13 @@
   font-weight: 600;
   cursor: pointer;
   min-height: 36px;
+  flex: 1 1 auto;
+}
+
+.pa-add-library {
+  background: var(--secondary-background);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
 }
 
 .pa-add:disabled {

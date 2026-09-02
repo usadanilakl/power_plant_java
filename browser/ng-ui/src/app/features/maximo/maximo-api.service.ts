@@ -189,6 +189,23 @@ export class MaximoApiService {
     );
   }
 
+  /** One form template by formKey (renders the ammonia checklist fields client-side). */
+  getFormTemplate(formKey: string): Observable<MaximoFormTemplate | null> {
+    const params = new HttpParams().set('formKey', formKey);
+    return this.http.get<{ responseData: MaximoFormTemplate }>(`${this.base}/forms/template`, { params }).pipe(
+      timeout(30000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
+  /** The single standing "Ammonia Offloads" work order every offload checklist attaches to (resolved or created). */
+  getAmmoniaWorkOrder(): Observable<MaximoWorkOrder | null> {
+    return this.http.get<{ responseData: MaximoWorkOrder }>(`${this.base}/ammonia/work-order`).pipe(
+      timeout(40000),
+      map(r => r.responseData ?? null)
+    );
+  }
+
   /** Submit a completed PM form. */
   completeForm(dto: MaximoFormSubmission): Observable<MaximoFormSubmission | null> {
     return this.http.post<{ responseData: MaximoFormSubmission }>(`${this.base}/forms/complete`, dto).pipe(

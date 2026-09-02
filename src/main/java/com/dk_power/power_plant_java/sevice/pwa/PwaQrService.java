@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.dto.pwa.qr.QrTagResultDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.repository.base_repositories.CommentRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
@@ -43,7 +44,11 @@ public class PwaQrService {
     private final LotoPointRepo lotoPointRepo;
     private final EquipmentRepo equipmentRepo;
     private final FileRepo fileRepo;
+    private final CommentRepo commentRepo;
     private final PwaLotoDrawingService drawingService;
+
+    /** Polymorphic {@code Comment.entityType} for LOTO points — matches the PWA and desktop paths. */
+    private static final String LOTO_POINT_ENTITY_TYPE = "LotoPoint";
 
     /**
      * Everything the scanned tag resolves to. An unknown tag is a normal empty result, not an error —
@@ -56,7 +61,8 @@ public class PwaQrService {
         List<LotoPoint> points = lotoPointRepo.findAllActiveByTagNumberIgnoreCase(tagNumber);
         for (LotoPoint p : points) {
             List<PointDrawingDto> drawings = drawingService.drawingsForPoints(List.of(p.getId()));
-            matches.add(new QrMatchDto("lotoPoint", p.getId(), p.getTagNumber(), p.getDescription(), drawings));
+            matches.add(new QrMatchDto("lotoPoint", p.getId(), p.getTagNumber(), p.getDescription(), drawings,
+                    photoCount(p), commentCount(p.getId())));
         }
 
         int equipmentCount = 0;
@@ -65,7 +71,10 @@ public class PwaQrService {
             equipmentCount = equipment.size();
             for (Equipment eq : equipment) {
                 List<PointDrawingDto> drawings = drawingService.descriptorsFor(eq.getId(), List.of(eq));
-                matches.add(new QrMatchDto("equipment", eq.getId(), eq.getTagNumber(), eq.getDescription(), drawings));
+                // Equipment attachments are exposed via mainFile / files M2M on the desktop side, not
+                // through the QR actions panel yet — surface 0 counts so the PWA hides the chip.
+                matches.add(new QrMatchDto("equipment", eq.getId(), eq.getTagNumber(), eq.getDescription(), drawings,
+                        0, 0));
             }
         }
 
@@ -91,12 +100,30 @@ public class PwaQrService {
             Equipment eq = equipmentRepo.findById(id).orElse(null);
             if (eq == null) return null;
             return new QrMatchDto("equipment", eq.getId(), eq.getTagNumber(), eq.getDescription(),
-                    drawingService.descriptorsFor(eq.getId(), List.of(eq)));
+                    drawingService.descriptorsFor(eq.getId(), List.of(eq)), 0, 0);
         }
         LotoPoint p = lotoPointRepo.findById(id).orElse(null);
         if (p == null) return null;
         return new QrMatchDto("lotoPoint", p.getId(), p.getTagNumber(), p.getDescription(),
-                drawingService.drawingsForPoints(List.of(p.getId())));
+                drawingService.drawingsForPoints(List.of(p.getId())),
+                photoCount(p), commentCount(p.getId()));
+    }
+
+    /**
+     * Non-null size of the point's {@code pictures} M2M. Runs inside the caller's read-only
+     * transaction — Hibernate resolves the size with a lightweight COUNT rather than fetching every
+     * row when the collection has not been touched yet, so we can call this for every match without
+     * dragging every FileObject onto the response.
+     */
+    private static int photoCount(LotoPoint p) {
+        return (p == null || p.getPictures() == null) ? 0 : p.getPictures().size();
+    }
+
+    /** Comment count for the point in the polymorphic Comment table, capped to int for the wire. */
+    private int commentCount(Long pointId) {
+        if (pointId == null) return 0;
+        long n = commentRepo.countByEntityTypeAndEntityId(LOTO_POINT_ENTITY_TYPE, pointId);
+        return n > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) n;
     }
 
     /**

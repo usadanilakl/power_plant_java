@@ -243,6 +243,17 @@ export class CurrentLotoService{
       }
     }
 
+    /**
+     * Start a fresh, unsaved LOTO draft with a subset of fields pre-populated. Used by the LOTO
+     * Board's "+ New LOTO here" flow where the box the operator clicked should already be selected
+     * before the form paints, so they don't have to hunt for it in the dropdown.
+     */
+    startNewDraft(partial: Partial<LotoDto>) {
+      const draft = new LotoDto();
+      Object.assign(draft, partial);
+      this.currentLotoSubject.next(draft);
+    }
+
     setCurrentLotoById(id: number) {
         this.lotoService.getLotoById(id.toString()).pipe(
         takeUntilDestroyed(this.destroyRef),

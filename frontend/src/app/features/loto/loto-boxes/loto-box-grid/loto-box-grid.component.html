@@ -132,42 +132,30 @@
 
         <div class="box-content">
           <span class="box-number">{{ box.number }}</span>
+          @if (!isPlaceholder(box) && box.lotoId) {
+            <span class="box-loto-permit">{{ box.lotoPermitNumber || ('#' + box.lotoId) }}</span>
+            @if (box.lotoRedTagNum) {
+              <span class="box-loto-redtag" [title]="'Red Tag #' + box.lotoRedTagNum">RT #{{ box.lotoRedTagNum }}</span>
+            }
+            @if (box.lotoEquipmentSystem) {
+              <span class="box-loto-eq" [title]="box.lotoEquipmentSystem">{{ box.lotoEquipmentSystem }}</span>
+            }
+          }
           @if (!isPlaceholder(box) && getLockSummary(box)) {
             <span class="box-lock-summary">{{ getLockSummary(box) }}</span>
           }
         </div>
 
-        @if (!isPlaceholder(box)) {
-          <button class="box-info-btn" (click)="openSidePanel(box, $event)" title="Details">i</button>
-          @if (commentCount(box.id!) > 0) {
-            <button class="box-comment-badge"
-                    (click)="openComments('LotoBox', box.id!, $event)"
-                    [title]="commentCount(box.id!) + ' comment(s)'">
-              💬{{ commentCount(box.id!) }}
-            </button>
-          }
+        @if (!isPlaceholder(box) && commentCount(box.id!) > 0) {
+          <button class="box-comment-badge"
+                  (click)="openComments('LotoBox', box.id!, $event)"
+                  [title]="commentCount(box.id!) + ' comment(s)'">
+            💬{{ commentCount(box.id!) }}
+          </button>
         }
 
         @if (isManualOverride(box)) {
           <span class="override-indicator" title="Manual Override Active">M</span>
-        }
-
-        @if (activeDropdown() === box.number && !editMode() && !isPlaceholder(box)) {
-          <div class="dropdown" (click)="$event.stopPropagation()">
-            @for (status of statuses; track status) {
-              <div
-                class="dropdown-item"
-                (click)="setBoxStatus(box, status, $event)">
-                {{ getStatusLabel(status) }}
-              </div>
-            }
-            <div class="dropdown-divider"></div>
-            <div
-              class="dropdown-item override-toggle"
-              (click)="toggleManualOverride(box, $event)">
-              {{ isManualOverride(box) ? '✓ Manual Override' : 'Enable Manual Override' }}
-            </div>
-          </div>
         }
       </div>
     }
@@ -192,7 +180,6 @@
               }
             </div>
 
-            <button class="box-info-btn" (click)="openSidePanel(box, $event)" title="Details">i</button>
             @if (commentCount(box.id!) > 0) {
               <button class="box-comment-badge"
                       (click)="openComments('LotoBox', box.id!, $event)"
@@ -214,53 +201,110 @@
     <div class="loading">Loading...</div>
   }
 
-  <!-- Side panel: read-only details -->
+  <!-- Unified box dialog: details + jump-to-LOTO + status/color + start-new-LOTO. Replaces the
+       old click-opens-status-dropdown + i-button-opens-details split. -->
   @if (selectedBox() && !editDraft()) {
     <div class="modal-backdrop" (click)="closeSidePanel()">
       <div class="box-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>Box {{ selectedBox()!.number }}</h3>
+          <h3>
+            Box {{ selectedBox()!.number }}
+            @if (isPlaceholder(selectedBox()!)) {
+              <span class="badge badge-inactive">Not set up</span>
+            }
+          </h3>
           <button class="modal-close" (click)="closeSidePanel()">×</button>
         </div>
         <div class="modal-body">
-          <div class="modal-row">
-            <strong>Description:</strong>
-            <span>{{ selectedBox()!.description || '—' }}</span>
-          </div>
-          <div class="modal-row">
-            <strong>Type:</strong>
-            <span>{{ selectedBox()!.portable ? 'Portable' : 'Fixed' }}</span>
-            <span class="badge" [class.badge-active]="selectedBox()!.active" [class.badge-inactive]="!selectedBox()!.active">
-              {{ selectedBox()!.active ? 'Active' : 'Inactive' }}
-            </span>
-          </div>
-          <div class="modal-row">
-            <strong>Set Size:</strong>
-            <span>{{ selectedBox()!.setSize }}</span>
-          </div>
-          <div class="modal-row">
-            <strong>LOTO:</strong>
-            @if (selectedBox()!.lotoId) {
-              <span>{{ selectedBox()!.lotoPermitNumber || ('#' + selectedBox()!.lotoId) }}</span>
-              @if (selectedBox()!.lotoStatus) {
-                <span class="badge badge-active">{{ selectedBox()!.lotoStatus }}</span>
+          @if (isPlaceholder(selectedBox()!)) {
+            <!-- Fixed grid slot with no LotoBox row in the DB yet. Only meaningful action is to
+                 start a new LOTO — that will surface the box in the form and let the operator
+                 provision it as part of the LOTO flow. -->
+            <p class="empty">This slot has no LOTO box in the database yet.</p>
+            <div class="modal-actions">
+              <button class="btn-primary"
+                      (click)="startNewLotoInBox(selectedBox()!, $event)"
+                      title="Open the LOTO form pre-selected on this box">
+                + Start New LOTO Here
+              </button>
+            </div>
+          } @else {
+            <div class="modal-row">
+              <strong>Description:</strong>
+              <span>{{ selectedBox()!.description || '—' }}</span>
+            </div>
+            <div class="modal-row">
+              <strong>Type:</strong>
+              <span>{{ selectedBox()!.portable ? 'Portable' : 'Fixed' }}</span>
+              <span class="badge" [class.badge-active]="selectedBox()!.active" [class.badge-inactive]="!selectedBox()!.active">
+                {{ selectedBox()!.active ? 'Active' : 'Inactive' }}
+              </span>
+            </div>
+            <div class="modal-row">
+              <strong>Set Size:</strong>
+              <span>{{ selectedBox()!.setSize }}</span>
+            </div>
+            <div class="modal-row">
+              <strong>LOTO:</strong>
+              @if (selectedBox()!.lotoId) {
+                <span>{{ selectedBox()!.lotoPermitNumber || ('#' + selectedBox()!.lotoId) }}</span>
+                @if (selectedBox()!.lotoStatus) {
+                  <span class="badge badge-active">{{ selectedBox()!.lotoStatus }}</span>
+                }
+                <button class="btn-link" (click)="openLoto(selectedBox()!.lotoId!)">Open LOTO →</button>
+              } @else {
+                <span>—</span>
               }
-              <button class="btn-link" (click)="openLoto(selectedBox()!.lotoId!)">Open LOTO →</button>
-            } @else {
-              <span>—</span>
+            </div>
+            @if (selectedBox()!.lotoId) {
+              <div class="modal-row">
+                <strong>Red Tag #:</strong>
+                <span>{{ selectedBox()!.lotoRedTagNum || '—' }}</span>
+              </div>
+              <div class="modal-row">
+                <strong>Equipment:</strong>
+                <span>{{ selectedBox()!.lotoEquipmentSystem || '—' }}</span>
+              </div>
+              <div class="modal-row">
+                <strong>Work Scope:</strong>
+                <span>{{ selectedBox()!.lotoWorkScope || '—' }}</span>
+              </div>
             }
-          </div>
-          @if (selectedBox()!.lotoId) {
-            <div class="modal-row">
-              <strong>Equipment:</strong>
-              <span>{{ selectedBox()!.lotoEquipmentSystem || '—' }}</span>
+
+            <!-- Status / LED color controls — surface directly in the dialog now that the old
+                 click-dropdown is gone. Same setBoxStatus + toggleManualOverride the dropdown
+                 called; keeps identical LED behavior. -->
+            <div class="modal-section">
+              <strong>Status / LED color:</strong>
+              <div class="status-btn-row">
+                @for (status of statuses; track status) {
+                  <button class="btn-secondary status-btn"
+                          [class.status-btn-active]="isCurrentStatus(selectedBox()!, status)"
+                          (click)="setBoxStatus(selectedBox()!, status, $event)">
+                    {{ getStatusLabel(status) }}
+                  </button>
+                }
+                <button class="btn-secondary status-btn"
+                        [class.status-btn-active]="isManualOverride(selectedBox()!)"
+                        (click)="toggleManualOverride(selectedBox()!, $event)"
+                        title="When on, LED color is not auto-updated from LOTO status">
+                  {{ isManualOverride(selectedBox()!) ? '✓ Manual Override' : 'Manual Override' }}
+                </button>
+              </div>
             </div>
-            <div class="modal-row">
-              <strong>Work Scope:</strong>
-              <span>{{ selectedBox()!.lotoWorkScope || '—' }}</span>
-            </div>
+
+            @if (!selectedBox()!.lotoId) {
+              <div class="modal-actions">
+                <button class="btn-primary"
+                        (click)="startNewLotoInBox(selectedBox()!, $event)"
+                        title="Open the LOTO form pre-selected on this box">
+                  + Start New LOTO Here
+                </button>
+              </div>
+            }
           }
 
+          @if (!isPlaceholder(selectedBox()!)) {
           <h4>Locks ({{ selectedBox()!.homeLocks.length }})</h4>
           @if (selectedBox()!.homeLocks.length === 0) {
             <p class="empty">No locks home-boxed here.</p>
@@ -293,6 +337,7 @@
           </button>
           @if (editMode()) {
             <button class="btn-primary" (click)="openEditDialog(selectedBox()!)">Edit Box</button>
+          }
           }
         </div>
       </div>

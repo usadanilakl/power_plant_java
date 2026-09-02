@@ -25,11 +25,25 @@ h1 {
   flex-shrink: 0;
 }
 
+/*
+ * Grid sizing target: fit ALL 72 boxes in the viewport without scroll on normal-sized screens.
+ * The grid keeps a 2:1 outer aspect ratio (12 wide × 6 tall) so each cell stays roughly square;
+ * max-width is capped by the available height so the grid never grows taller than what the
+ * viewport (minus header + toolbar + margins) can show. On phones the height cap collapses,
+ * scroll comes back automatically.
+ *
+ * The "260px" reserved height is: router menu (~44) + LOTO Board toolbar (~48) + this page's
+ * toolbar (~48) + status message + gap padding. Tweak here if the surrounding chrome changes.
+ */
 .grid-container {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: clamp(4px, 0.6vw, 10px);
+  grid-template-rows: repeat(6, 1fr);
+  gap: clamp(3px, 0.5vw, 8px);
   width: 100%;
+  max-width: min(100%, calc((100vh - 260px) * 2));
+  aspect-ratio: 12 / 6;
+  margin: 0 auto;
   overflow: visible !important;
 }
 
@@ -41,17 +55,33 @@ h1 {
   align-items: center;
   cursor: pointer;
   position: relative;
-  font-size: clamp(10px, 1.05vw, 16px);
+  font-size: clamp(9px, 0.9vw, 14px);
   font-weight: bold;
   border-radius: 6px;
   transition: all 0.2s ease;
   color: #fff;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
-  overflow: visible !important;
-  padding: 6px;
+  overflow: hidden;
+  padding: 4px;
+}
+
+/* Very small screens (phones): the height cap collapses, so allow the page to scroll and let
+   boxes size themselves back up to a comfortable tap target. */
+@media (max-width: 640px) {
+  .grid-container {
+    max-width: 100%;
+    aspect-ratio: auto;
+    grid-template-rows: none;
+  }
+  .box {
+    aspect-ratio: 1;
+    height: auto;
+  }
 }
 
 .box:hover {
@@ -88,26 +118,74 @@ h1 {
   text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
 }
 
-.box-info-btn {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.5);
-  color: #fff;
-  font-size: 11px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  z-index: 4;
+.box-loto-permit {
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
 }
-.box-info-btn:hover { background: var(--accent-color); }
+
+.box-loto-eq {
+  font-size: 0.72em;
+  font-weight: 500;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.9;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+}
+
+.box-loto-redtag {
+  display: inline-block;
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1.1;
+  padding: 1px 5px;
+  background: rgba(239, 83, 80, 0.9);
+  color: #fff;
+  border-radius: 3px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Unified box dialog (task #2 in the LOTO Board rework): the old click-dropdown lived on the
+ * tile itself and the "i" info button opened a separate details modal. Both are gone — click
+ * now opens the single detail modal and the section below styles the status/color row inside it.
+ */
+.modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.status-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.status-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--secondary-background);
+  color: var(--primary-text);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.status-btn:hover { border-color: var(--accent-color); }
+.status-btn-active {
+  background: var(--accent-color);
+  color: var(--on-solid, #fff);
+  border-color: var(--accent-color);
+}
 
 .box-comment-badge {
   position: absolute;

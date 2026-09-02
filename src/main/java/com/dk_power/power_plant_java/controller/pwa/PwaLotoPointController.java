@@ -19,17 +19,26 @@ import com.dk_power.power_plant_java.sevice.pwa.PwaLotoDrawingService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaLotoStandardWalkdownService;
 
 import java.util.stream.Collectors;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -76,6 +85,22 @@ public class PwaLotoPointController {
     private final PwaLotoDrawingService drawingService;
     private final LotoPointRepo lotoPointRepo;
     private final NgLotoStandardService lotoStandardService;
+
+    /**
+     * Absolute path to the on-disk uploads root, mirrored from
+     * {@code NgFileService}. The PWA photo-bytes endpoint below resolves each
+     * FileObject's stored relative link against this so we don't have to
+     * expose the raw static {@code /uploads/**} URL to the client (which is
+     * behind IIS auth and would 401 in the PWA context).
+     */
+    @Value("${files.root.path}")
+    private String filesRootPath;
+
+    /** Used by {@link #getPhotoContent} to run a lightweight COUNT on the loto_point_picture
+     *  join table without triggering a full M2M lazy load (which would blow up outside a
+     *  managed session and turn a legit "not attached" into a 500). */
+    @PersistenceContext
+    private EntityManager entityManager;
 
     // ── Point creation + tag existence check + edit ──────────────────────────
 
@@ -343,6 +368,112 @@ public class PwaLotoPointController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new NgApiResponse<>(null, "Failed to load photos: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Stream one attached picture's bytes so the PWA can render it with a JWT-authed
+     * {@code HttpClient.get(..., {responseType: 'blob'})} → {@code URL.createObjectURL(blob)} —
+     * same pattern Maximo's {@code fetchWoAttachment} uses. Bypasses the raw {@code /uploads/**}
+     * URL (which is behind IIS auth and would 401 the PWA into a native credential prompt).
+     *
+     * <p>Scope-checks that {@code fileId} is actually attached to {@code pointId} so a Plant user
+     * cannot enumerate arbitrary FileObject ids on the hub via this endpoint.
+     */
+    @GetMapping("/{pointId}/photos/{fileId}/content")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> getPhotoContent(@PathVariable Long pointId,
+                                                    @PathVariable Long fileId) {
+        try {
+            // Attachment scope-check via a native COUNT on the join table rather than
+            // point.getPictures().stream() — a lazy M2M walk here used to throw
+            // LazyInitializationException the moment the outer @Transactional closed, which the
+            // catch below turned into a silent 500 with an empty body (Content-Length: 0). The
+            // COUNT stays cheap and never triggers a full collection load.
+            //
+            // @Transactional(readOnly = true) is also declared on the method so the FileObject +
+            // its lazy fields can be safely read below without another detach.
+            Long attachedCount = ((Number) entityManager.createNativeQuery(
+                            "SELECT COUNT(*) FROM loto_point_picture WHERE loto_point_id = :p AND file_id = :f")
+                    .setParameter("p", pointId)
+                    .setParameter("f", fileId)
+                    .getSingleResult()).longValue();
+            if (attachedCount == null || attachedCount == 0L) {
+                log.debug("PWA getPhotoContent: file {} not attached to point {}", fileId, pointId);
+                return ResponseEntity.notFound().build();
+            }
+
+            FileObject file = fileRepo.findById(fileId).orElse(null);
+            if (file == null) {
+                log.warn("PWA getPhotoContent: FileObject {} missing for point {}", fileId, pointId);
+                return ResponseEntity.notFound().build();
+            }
+            String storedLink = file.getFileLink();
+            if (storedLink == null || storedLink.isBlank()) {
+                log.warn("PWA getPhotoContent: FileObject {} has no fileLink (fileType/vendor null?) for point {}",
+                        fileId, pointId);
+                return ResponseEntity.notFound().build();
+            }
+
+            // Resolve the stored fileLink ("uploads/<ext>/<type>/<vendor>/<num>.<ext>") against the
+            // absolute uploads root by stripping the leading "uploads/" segment — same pattern the
+            // sync FileFixesTestController uses.
+            String link = storedLink.replace('\\', '/').replaceFirst("^/+", "");
+            int slash = link.indexOf('/');
+            Path onDisk = (slash >= 0)
+                    ? Paths.get(filesRootPath).resolve(link.substring(slash + 1))
+                    : Paths.get(filesRootPath).resolve(link);
+            if (!Files.exists(onDisk) || !Files.isReadable(onDisk)) {
+                log.warn("PWA getPhotoContent: file on disk missing for point {} file {} — link='{}', resolved={}",
+                        pointId, fileId, storedLink, onDisk);
+                return ResponseEntity.notFound().build();
+            }
+
+            MediaType contentType = mediaTypeForExtension(file.getExtension());
+            String downloadName = (file.getName() != null && !file.getName().isBlank())
+                    ? file.getName() : ("photo-" + fileId);
+            String extLower = file.getExtension() != null ? file.getExtension().toLowerCase() : "";
+            if (!extLower.isBlank() && !downloadName.toLowerCase().endsWith("." + extLower)) {
+                downloadName = downloadName + "." + extLower;
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(contentType)
+                    // inline so <img> can render it directly; the filename hint is still respected
+                    // if the user "Save" from the fullscreen viewer.
+                    .header("Content-Disposition", "inline; filename=\"" + downloadName.replace("\"", "'") + "\"")
+                    .body(new FileSystemResource(onDisk));
+        } catch (Exception e) {
+            // Include the exception class name so a 500 in the network tab tells us WHY without
+            // needing to tail the hub log — the previous silent 500 (empty Content-Length) hid
+            // exactly this class of failure until an ai-diagnostics dump made it visible.
+            log.error("PWA getPhotoContent failed for point {} file {} — {}: {}",
+                    pointId, fileId, e.getClass().getSimpleName(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Best-effort MIME lookup by file extension so the PWA gets a Content-Type it can render
+     * inline (image / video / pdf). Anything unknown falls back to {@code application/octet-stream}
+     * — the browser will offer a download instead of trying to render junk.
+     */
+    private static MediaType mediaTypeForExtension(String ext) {
+        if (ext == null) return MediaType.APPLICATION_OCTET_STREAM;
+        return switch (ext.toLowerCase()) {
+            case "jpg", "jpeg" -> MediaType.IMAGE_JPEG;
+            case "png" -> MediaType.IMAGE_PNG;
+            case "gif" -> MediaType.IMAGE_GIF;
+            case "webp" -> MediaType.valueOf("image/webp");
+            case "bmp" -> MediaType.valueOf("image/bmp");
+            case "heic" -> MediaType.valueOf("image/heic");
+            case "heif" -> MediaType.valueOf("image/heif");
+            case "pdf" -> MediaType.APPLICATION_PDF;
+            case "mp4", "m4v" -> MediaType.valueOf("video/mp4");
+            case "mov" -> MediaType.valueOf("video/quicktime");
+            case "webm" -> MediaType.valueOf("video/webm");
+            case "txt", "csv" -> MediaType.valueOf("text/plain");
+            default -> MediaType.APPLICATION_OCTET_STREAM;
+        };
     }
 
     /**

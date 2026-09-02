@@ -11,6 +11,9 @@ export interface PwaLotoListItem {
   requestor: string | null;
   equipmentSystem: string | null;
   status: string | null;
+  boxNumber: number | null;
+  /** External Red Tag Enterprise LOTO number set via Red Tag Bypass. Null if none. */
+  redTagNum: string | null;
   phases: Phase[];
   hangGrab: GrabInfo | null;
   verifyGrab: GrabInfo | null;
