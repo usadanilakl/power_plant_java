@@ -283,3 +283,40 @@ than removing it.
   INVUSE for this plant's workflow. It's an object-structure / automation-script configuration on this instance.
 - Fix that one attribute → delete the expansion loop, send `spi:quantity: N`, and issues become single clean
   rows with fractional support.
+
+---
+
+## 8. Update 2026-09-02 — one-shot issue SOLVED via INVUSE (needs an admin grant)
+
+After a Maximo admin added authorization for the **`INVUSE` (Inventory Usage)** object structure to our API
+user (previously `BMXAA0024E` READ/ADD not allowed), we found a **working one-shot, correct-quantity,
+WO-charged issue**. The support tech had suggested `MXINVISSUE`; that object is **still not authorized**
+(`BMXAA9301E`), but `INVUSE` (now read+insert) does the job. All probing was net-zero on throwaway test WOs
+(J26-44458/59/60, since cancelled); item 4726 restored to 17.
+
+### ✅ Working ISSUE recipe (single row, exact qty, fractional-capable, charged to the WO)
+1. **Create + approve** the WO (as today).
+2. **Reserve the material on the WO** — MERGE a `wpmaterial` child onto `mxapiwodetail`:
+   `{itemnum, itemqty:N, location:<storeroom>, storelocsite:"JG", orgid:"J2500", itemsetid:"JGITEM",
+   linetype:"ITEM", directreq:false}`. (Storeroom field on WPMATERIAL is **`location`**, not `storeloc`;
+   omit site/org/itemset → `BMXAA4544E`.) Read back **`requestnum`** — the reservation id.
+3. **Create an Inventory Usage doc**: `POST /oslc/os/mxapiinvuse?lean=1
+   {usetype:"ISSUE", siteid:"JG", fromstoreloc:<storeroom>}` → grab its href.
+4. **Add the issue line linked by the reservation** (NOT by `refwo`/`wonum`, which are read-only inbound and
+   `did not validate`): MERGE `{invuseline:[{itemnum, fromstoreloc, quantity:N, linetype:"ITEM",
+   usetype:"ISSUE", requestnum:<req>}]}`. Maximo auto-fills `refwo` and keeps the full quantity.
+5. **Complete** by MERGE-setting `{status:"COMPLETE"}` (the `?action=wsmethod:changeStatus` route errors
+   `BMXAA5426E` "primitive null"; the plain status MERGE works). Posts one row: stock −N, WO charged.
+
+Trade-off vs. today's N-rows hack: ~4 calls + a reservation step, and a dependency on the `INVUSE` grant —
+but a single clean line and **fractional units** finally work. Implement only if row-clutter / fractional
+issues matter; otherwise the current N-rows path already works.
+
+### ❌ One-shot RETURN — ruled out (do NOT keep chasing it)
+Returns/corrections **cannot** be posted as a single multi-unit row on this API. Exhaustively probed
+2026-09-02: negative `quantity` → `BMXAA4175E` (positive required); `returnagainstissue:true` +
+`issueid`(matusetransid *and* invuselineid) + GL account → **issues N, doesn't credit**;
+`returnagainstissue` + fresh reservation `requestnum` → also issues; `usetype:RETURN` header → `BMXAA8922E`
+invalid. `returnagainstissue` reads back `true` but is **ignored on inbound**; a reservation always fulfills
+as an issue. **Only reliable credit = WO-side matusetrans RETURN, one row per unit** (same as today). So the
+shape is: **one-shot issues, per-unit returns.**

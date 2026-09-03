@@ -855,8 +855,8 @@ public class MaximoFormSeeder {
             }
         }
 
-        f.section("Lead CRO review")
-                .add("lead_cro", "Lead CRO review & sign (name)", "text", null, null, false)
+        f.section("Lead operator review")
+                .add("lead_cro", "Lead Operator Name", "text", null, null, false)
                 .add("lead_cro_date", "Date", "date", null, null, false)
                 .textarea("notes", "Notes / observations", "worklog");
 

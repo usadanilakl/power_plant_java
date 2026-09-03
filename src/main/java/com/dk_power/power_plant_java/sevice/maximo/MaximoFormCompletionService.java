@@ -218,7 +218,15 @@ public class MaximoFormCompletionService {
             notes.add("labor " + laborHours + "h skipped (no personid)");
         }
 
+        // Name the actual submitter in the worklog SUMMARY. Maximo stamps the worklog's "Created By" with the
+        // integration account (the shared api-key user), never the signed-in operator — so without this the log
+        // looks like one person filed every offload. Adding the submitter makes the log truthful; the operator
+        // field (maximoTarget=worklog) also lands the name in the details.
         String summary = "Completed form: " + formName;
+        if (submittedBy != null && !submittedBy.isBlank() && !"app".equalsIgnoreCase(submittedBy)) {
+            summary += " — by " + submittedBy;
+        }
+        if (summary.length() > 100) summary = summary.substring(0, 100).trim();   // WORKLOG.DESCRIPTION is 100 chars
         try {
             workOrders.reportActuals(href, labor.isEmpty() ? null : labor, summary,
                     details.length() > 0 ? details.toString() : null, "CLIENTNOTE");

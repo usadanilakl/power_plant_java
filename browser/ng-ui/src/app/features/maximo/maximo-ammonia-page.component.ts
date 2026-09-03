@@ -1,8 +1,9 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { PwaContractor, ServerApiService } from '../../services/server-api.service';
+import { UserSetupService } from '../../services/user-setup.service';
 import { MaximoApiService } from './maximo-api.service';
 import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, MaximoWorkOrder } from './maximo.model';
 
@@ -45,6 +46,9 @@ interface OrientationState { kind: 'expired' | 'soon' | 'ok' | 'unknown'; label:
               <span class="am-done-i">✓</span>
               <p class="am-done-t">Ammonia offload logged</p>
               <p class="am-done-d">Checklist attached to work order <b>{{ submittedWonum() }}</b>.</p>
+              @if (attachFailed() > 0) {
+                <p class="am-warn">{{ attachFailed() }} file(s) couldn't be attached — you can add them from the work order in Maximo.</p>
+              }
               <button class="am-primary" (click)="startNew()">+ New offload</button>
               <button class="am-secondary" (click)="back()">Back to Maximo</button>
             </div>
@@ -134,6 +138,18 @@ interface OrientationState { kind: 'expired' | 'soon' | 'ok' | 'unknown'; label:
                 }
               }
             }
+            <h4 class="am-sec">Photos / files (optional)</h4>
+            <p class="am-sub">Attach delivery receipts, tank-level photos, etc. — added to the work order alongside the checklist PDF.</p>
+            <label class="am-file">＋ Add photos / files
+              <input type="file" multiple accept="image/*,application/pdf,.heic" (change)="onFilesPicked($any($event.target))" hidden>
+            </label>
+            @for (f of attachments(); track f.name + $index) {
+              <div class="am-attach">
+                <span class="am-attach-name">{{ f.name }}</span>
+                <button class="am-attach-x" (click)="removeAttachment($index)" aria-label="Remove file">✕</button>
+              </div>
+            }
+
             @if (bannerError()) { <p class="am-err">{{ bannerError() }}</p> }
             <button class="am-primary" [disabled]="submitting()" (click)="submit()">
               {{ submitting() ? 'Submitting…' : 'Submit & attach to work order' }}
@@ -189,11 +205,16 @@ interface OrientationState { kind: 'expired' | 'soon' | 'ok' | 'unknown'; label:
     .am-done-i { display: block; width: 3rem; height: 3rem; line-height: 3rem; margin: 0 auto 0.7rem; border-radius: 50%; background: #27ae60; color: #fff; font-size: 1.7rem; }
     .am-done-t { font-size: 1.1rem; font-weight: 800; color: var(--primary-text); margin: 0 0 0.3rem; }
     .am-done-d { color: var(--secondary-text, #888); font-size: 0.9rem; margin: 0 0 1.2rem; }
+    .am-file { display: inline-block; background: transparent; color: var(--accent-color); border: 1px dashed var(--accent-color); border-radius: 10px; padding: 0.6rem 0.9rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-bottom: 0.6rem; }
+    .am-attach { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.5rem 0.7rem; border: 1px solid var(--border-color); border-radius: 9px; margin-bottom: 0.4rem; background: var(--card-bg, var(--secondary-background)); }
+    .am-attach-name { font-size: 0.85rem; color: var(--primary-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .am-attach-x { flex: none; background: transparent; border: none; color: #e74c3c; font-size: 0.95rem; font-weight: 800; cursor: pointer; font-family: inherit; padding: 0.1rem 0.3rem; }
   `]
 })
 export class MaximoAmmoniaPageComponent implements OnInit {
   private api = inject(MaximoApiService);
   private serverApi = inject(ServerApiService);
+  private userSetup = inject(UserSetupService);
   private router = inject(Router);
 
   private static readonly FORM_KEY = 'AMMONIA_OFFLOAD';
@@ -208,6 +229,10 @@ export class MaximoAmmoniaPageComponent implements OnInit {
   wo = signal<MaximoWorkOrder | null>(null);
   template = signal<MaximoFormTemplate | null>(null);
   formValues = signal<Record<string, any>>({});
+
+  // Extra photos/files (delivery receipt, tank-level photos, …) attached to the standing WO alongside the PDF.
+  attachments = signal<File[]>([]);
+  attachFailed = signal(0);
 
   // Contractors (driver orientation check)
   private allContractors = signal<PwaContractor[]>([]);
@@ -274,9 +299,11 @@ export class MaximoAmmoniaPageComponent implements OnInit {
     return { kind: 'ok', label: 'Current' };
   }
 
-  /** Move to the checklist, seeding today's date + the picked driver's details. */
+  /** Move to the checklist, seeding today's date, the signed-in operator, + the picked driver's details. */
   startForm(): void {
     const seed: Record<string, any> = { offload_date: this.today() };
+    const me = this.userSetup.getUserData()?.name;
+    if (me) seed['operator'] = me;   // who is performing the offload (editable if someone else runs it)
     const d = this.selectedDriver();
     if (d) {
       seed['driver_name'] = d.name;
@@ -322,14 +349,48 @@ export class MaximoAmmoniaPageComponent implements OnInit {
       valuesJson: JSON.stringify(this.formValues()),
       completeWo: false,   // the standing WO must never close
     };
+    this.attachFailed.set(0);
     this.api.completeForm(dto).subscribe({
-      next: () => { this.submitting.set(false); this.submittedWonum.set(w.wonum); this.phase.set('done'); },
+      next: () => {
+        const files = this.attachments();
+        if (!files.length) { this.finishSubmit(w.wonum); return; }
+        // The checklist PDF is attached server-side; now attach the operator's extra photos/files to the SAME
+        // standing WO. An upload failure doesn't undo the submitted checklist — surface a count on the done screen.
+        forkJoin(files.map(f => this.api.uploadWoAttachment(w.href, f).pipe(
+          map(() => true), catchError(() => of(false))
+        ))).subscribe(results => {
+          this.attachFailed.set(results.filter(ok => !ok).length);
+          this.finishSubmit(w.wonum);
+        });
+      },
       error: e => { this.submitting.set(false); this.bannerError.set(e?.error?.message || e?.message || 'Could not submit — check your connection and try again.'); }
     });
   }
 
+  /** Land on the confirmation screen once the checklist (and any extra files) are in Maximo. */
+  private finishSubmit(wonum: string): void {
+    this.submitting.set(false);
+    this.submittedWonum.set(wonum);
+    this.phase.set('done');
+  }
+
+  /** Add the picked photos/files to the pending attachment list (deduped only by re-pick, kept until submit). */
+  onFilesPicked(input: HTMLInputElement): void {
+    const picked = Array.from(input.files ?? []);
+    if (picked.length) this.attachments.set([...this.attachments(), ...picked]);
+    input.value = '';   // reset so the same file can be re-picked after removal
+  }
+
+  removeAttachment(i: number): void {
+    const next = this.attachments().slice();
+    next.splice(i, 1);
+    this.attachments.set(next);
+  }
+
   startNew(): void {
     this.formValues.set({});
+    this.attachments.set([]);
+    this.attachFailed.set(0);
     this.selectedDriver.set(null);
     this.query.set('');
     this.bannerError.set(null);
