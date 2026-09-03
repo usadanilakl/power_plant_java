@@ -30,6 +30,16 @@ import {
   PartsCheckoutResult,
   ReturnMaterialRequest
 } from '../../models/maximo/maximo.models';
+import { LotoLink } from '../../features/maximo/maximo-wo-loto-link.service';
+
+/** Outage WOs (with coverage flags) + the non-closed LOTO catalog, for the Outage Items page. */
+export interface OutageCoverage { items: MaximoWorkOrder[]; lotos: LotoLink[]; }
+/** One bulk-assign target: the WO number (stored on the LOTO) + its Maximo href (for the worklog comment). */
+export interface AssignLotoTarget { wonum: string; href: string; }
+/** Result of a bulk LOTO-assign. */
+export interface AssignLotoResult {
+  newlyLinked: number; alreadyLinked: number; commentsWritten: number; commentFailures: string[]; loto: LotoLink;
+}
 
 @Injectable({ providedIn: 'root' })
 export class MaximoApiService {
@@ -199,6 +209,21 @@ export class MaximoApiService {
     return this.http
       .get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/work-orders/outage`, { params: p })
       .pipe(map(r => r.responseData ?? []));
+  }
+
+  /** Outage WOs enriched with LOTO-coverage flags + the non-closed LOTO catalog (grouping + bulk-assign picker). */
+  getOutageCoverage(pageSize = 300): Observable<OutageCoverage> {
+    const p = new HttpParams().set('pageSize', String(pageSize));
+    return this.http
+      .get<SpringApiResponse<OutageCoverage>>(`${this.base}/work-orders/outage/coverage`, { params: p })
+      .pipe(map(r => r.responseData ?? { items: [], lotos: [] }));
+  }
+
+  /** Bulk-assign one LOTO to many outage WOs (links each + posts the "Covered by LOTO: …" worklog). */
+  assignLoto(lotoId: number, targets: AssignLotoTarget[]): Observable<AssignLotoResult | null> {
+    return this.http
+      .post<SpringApiResponse<AssignLotoResult>>(`${this.base}/work-orders/outage/assign-loto`, { lotoId, targets })
+      .pipe(map(r => r.responseData ?? null));
   }
 
   /** A WO's LOTO isolation notes only (newest first). */

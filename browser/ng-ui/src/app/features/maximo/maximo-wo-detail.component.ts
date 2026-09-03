@@ -275,6 +275,19 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
                       <span class="wd-computed-val">{{ computeFormula(row.f) }}{{ row.f.unit ? ' ' + row.f.unit : '' }}</span>
                     }
                     @if (row.f.note) { <span class="wd-computed-note">{{ row.f.note }}</span> }
+                    @if (outOfTolerance(row.f)) {
+                      <div class="wd-wr">
+                        <span class="wd-wr-warn">⚠ Out of tolerance — Δ {{ computeFormula(row.f) }} exceeds ±{{ row.f.alertThreshold }}</span>
+                        @if (wrPhase(row.f) === 'done') {
+                          <span class="wd-wr-done">✓ Work Request submitted{{ wrTicket(row.f) ? ' — ' + wrTicket(row.f) : '' }}</span>
+                        } @else {
+                          <button type="button" class="wd-wr-btn" [disabled]="wrPhase(row.f) === 'submitting'" (click)="submitWr(row.f)">
+                            {{ wrPhase(row.f) === 'submitting' ? 'Submitting…' : '⚠ Submit Work Request' }}
+                          </button>
+                          @if (wrPhase(row.f) === 'error') { <span class="wd-wr-err">{{ wrError(row.f) }}</span> }
+                        }
+                      </div>
+                    }
                   </div>
                 }
                 @case ('timer') {
@@ -414,6 +427,12 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
     .wd-computed-val { font-size: 1.25rem; font-weight: 800; color: var(--accent-color); }
     .wd-computed-val.wd-computed-empty { font-size: 0.95rem; font-weight: 600; color: var(--secondary-text, #888); }
     .wd-computed-note { font-size: 0.72rem; color: var(--secondary-text, #888); line-height: 1.3; }
+    .wd-wr { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e08a2e; }
+    .wd-wr-warn { font-size: 0.8rem; font-weight: 700; color: #e08a2e; }
+    .wd-wr-btn { align-self: flex-start; background: #e08a2e; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 0.8rem; font-size: 0.85rem; font-weight: 800; cursor: pointer; font-family: inherit; }
+    .wd-wr-btn:disabled { opacity: 0.6; cursor: default; }
+    .wd-wr-done { font-size: 0.82rem; font-weight: 700; color: #27ae60; }
+    .wd-wr-err { font-size: 0.78rem; color: #e74c3c; }
     .wd-timer { display: flex; flex-direction: column; gap: 0.35rem; }
     .wd-timer-label { font-size: 0.9rem; color: var(--primary-text); }
     .wd-timer-row { display: flex; align-items: center; gap: 0.5rem; }
@@ -786,6 +805,38 @@ export class MaximoWoDetailComponent implements OnInit {
     }
     const r = this.evalExpr(f.formula, vars);
     return r == null ? null : Math.round(r * 100) / 100;
+  }
+
+  // ── Out-of-tolerance Work Request (RO probe Δ, and any computed field with an alert threshold) ──
+  private wrStates = signal<Record<string, { phase: 'idle' | 'submitting' | 'done' | 'error'; ticket?: string; error?: string }>>({});
+
+  /** True when a computed field carries an alert threshold and its current value breaches it (magnitude when alertAbs). */
+  outOfTolerance(f: MaximoFormFieldDef): boolean {
+    if (f.alertThreshold == null) return false;
+    const v = this.computeFormula(f);
+    if (v == null) return false;
+    return (f.alertAbs ? Math.abs(v) : v) > f.alertThreshold;
+  }
+  wrPhase(f: MaximoFormFieldDef): 'idle' | 'submitting' | 'done' | 'error' { return this.wrStates()[f.name]?.phase ?? 'idle'; }
+  wrTicket(f: MaximoFormFieldDef): string { return this.wrStates()[f.name]?.ticket ?? ''; }
+  wrError(f: MaximoFormFieldDef): string { return this.wrStates()[f.name]?.error ?? ''; }
+
+  /** File the preset Work Request (Maximo SR) for an out-of-tolerance probe — location + text come from the field. */
+  submitWr(f: MaximoFormFieldDef): void {
+    const phase = this.wrPhase(f);
+    if (phase === 'submitting' || phase === 'done') return;
+    const v = this.computeFormula(f);
+    const summary = (`RO probe out of tolerance: ${f.label}`).slice(0, 100);
+    const details = [f.alertWrText, `Measured Δ = ${v} (max ${f.alertThreshold}).`, this.wo?.wonum ? `PM WO ${this.wo.wonum}.` : '']
+      .filter(Boolean).join('\n');
+    this.setWrState(f.name, { phase: 'submitting' });
+    this.api.createServiceRequest({ description: summary, longDescription: details, location: f.alertWrLocation }).subscribe({
+      next: sr => this.setWrState(f.name, { phase: 'done', ticket: sr?.ticketid }),
+      error: e => this.setWrState(f.name, { phase: 'error', error: e?.error?.message || e?.message || 'Could not submit the Work Request — check your connection.' }),
+    });
+  }
+  private setWrState(name: string, s: { phase: 'idle' | 'submitting' | 'done' | 'error'; ticket?: string; error?: string }): void {
+    this.wrStates.set({ ...this.wrStates(), [name]: s });
   }
 
   /** Tiny safe arithmetic evaluator: + - * / ( ), unary +/-, decimals, and variable names — NO eval/Function

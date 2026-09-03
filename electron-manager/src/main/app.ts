@@ -13,6 +13,7 @@ import { WindowLayoutManager } from './managers/window-layout.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
 import { getWorkingDir, getGuidesPath, ensureWorkingDir, ensureTessdata, ensureCertificate, provisionDefaultConfigs, provisionEtaProDefaults } from './paths';
+import { logFatal, fatalLogPath } from './fatal-log';
 import * as events from './ipc/events';
 import type { StartupAssessment } from '../shared/types';
 
@@ -906,7 +907,27 @@ export default class App {
     App.application = electronApp;
 
     App.application.on('window-all-closed', App.onWindowAllClosed);
-    App.application.on('ready', App.onReady);
+    // onReady is async and nothing awaits it, so a rejection inside it is an unhandled rejection.
+    // Several awaits before autoStart() are unguarded (startupAssessment, clearCache,
+    // downloadJarUpdate), so a failure there halts startup with the window already open — the app
+    // LOOKS alive but Spring Boot never launched. Before main.ts installed an unhandledRejection
+    // handler that surfaced loudly; now it must be caught here, recorded durably, and shown, or a
+    // half-started kiosk becomes invisible.
+    App.application.on('ready', () => {
+      App.onReady().catch((err) => {
+        logFatal('onReady', err);
+        try {
+          dialog.showErrorBox(
+            `${APP_DISPLAY_NAME} failed to start`,
+            `Startup did not complete, so the backend was not launched.\n\n` +
+              `${err instanceof Error ? err.message : String(err)}\n\n` +
+              `Details: ${fatalLogPath()}`
+          );
+        } catch {
+          // Dialog is best-effort; the durable log above is the real record.
+        }
+      });
+    });
     App.application.on('activate', App.onActivate);
 
     // Use before-quit only as a safety net (main cleanup is in 'close' handler)

@@ -143,7 +143,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     private com.dk_power.power_plant_java.dto.permits.LotoLinkDto toLink(Loto l) {
         String status = l.getPermitStatus() != null ? l.getPermitStatus().getName() : null;
         return new com.dk_power.power_plant_java.dto.permits.LotoLinkDto(
-                l.getId(), l.getPermitNumber(), status, l.getEquipmentSystem(), l.getLotoRequestor(), l.linkedWonumList());
+                l.getId(), l.getPermitNumber(), status, l.getEquipmentSystem(), l.getLotoRequestor(), l.linkedWonumList(),
+                l.getRedTagNum(), l.getDocNum(), l.getBoxNumber(), l.getWorkScope());
     }
 
     public Page<LotoDto> complexSearch(String searchString, int page, int size) {

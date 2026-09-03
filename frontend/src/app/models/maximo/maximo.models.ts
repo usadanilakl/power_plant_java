@@ -61,6 +61,14 @@ export interface MaximoWorkOrder {
   outageType?: string;
   /** How many LOTO isolation notes this WO already has; on outage-list rows only. */
   lotoNoteCount?: number;
+  // ── Outage-coverage enrichment (only the /work-orders/outage/coverage query sets these) ──
+  /** True when a non-closed LOTO covers this WO (structured link OR a LOTO # parsed from its log). */
+  covered?: boolean;
+  /** IDs of the non-closed LOTOs covering this WO (structured ∪ parsed); [] when uncovered. */
+  coveringLotoIds?: number[];
+  /** Earliest / latest LOTO-log createdate on this WO (ISO strings) — powers the log-time range filter. */
+  lotoNoteEarliest?: string;
+  lotoNoteLatest?: string;
 }
 
 /** One Maximo ticket (SR or WO) with the asset the tag matcher identified/suggested for it. */

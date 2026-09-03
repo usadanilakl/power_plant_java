@@ -350,6 +350,19 @@ public class MaximoWorkOrderAdapter {
      * instance, only this query fails — never the shared {@link #SELECT_FIELDS} used by every other WO query.
      */
     public List<MaximoWorkOrderDto> listByOutageType(List<String> types, String siteid, int pageSize) {
+        return listOutageWithNotes(types, siteid, pageSize).stream().map(OutageWo::wo).toList();
+    }
+
+    /** An outage WO row paired with its LOTO isolation worklog rows (mapped from the ONE inline worklog select). */
+    public record OutageWo(MaximoWorkOrderDto wo,
+                           List<com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto> lotoNotes) {}
+
+    /**
+     * Like {@link #listByOutageType} but also returns each WO's LOTO isolation worklog rows (title == the marker),
+     * so callers can parse the note text / read the note timestamps without a per-WO round trip. The outage
+     * coverage view uses this to detect LOTOs mentioned in a WO's log and to compute the log-time range.
+     */
+    public List<OutageWo> listOutageWithNotes(List<String> types, String siteid, int pageSize) {
         if (types == null || types.isEmpty()) return List.of();
         List<String> conds = new ArrayList<>();
         addStrIn(conds, outageTypeAttr, types);
@@ -377,11 +390,13 @@ public class MaximoWorkOrderAdapter {
             rows = members(access.getMap(access.osUrl(OS), outageParams(baseSelect, where, pageSize)));
             enriched = false;
         }
-        List<MaximoWorkOrderDto> out = new ArrayList<>(rows.size());
+        List<OutageWo> out = new ArrayList<>(rows.size());
         for (Map<String, Object> row : rows) {
             MaximoWorkOrderDto d = map(row);
-            if (enriched) d.setLotoNoteCount(countLotoNotes(row));
-            out.add(d);
+            List<com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto> notes =
+                    enriched ? extractLotoNotes(row) : List.of();
+            d.setLotoNoteCount(notes.size());
+            out.add(new OutageWo(d, notes));
         }
         return out;
     }
@@ -395,19 +410,31 @@ public class MaximoWorkOrderAdapter {
         return params;
     }
 
-    /** Count LOTO isolation notes in a WO row's inline {@code spi:worklog} (rows titled {@link #LOTO_NOTE_TITLE}). */
+    /** Map a WO row's inline {@code spi:worklog} to the LOTO isolation notes only (rows titled {@link #LOTO_NOTE_TITLE}). */
     @SuppressWarnings("unchecked")
-    private static int countLotoNotes(Map<String, Object> row) {
+    private static List<com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto> extractLotoNotes(Map<String, Object> row) {
         Object wl = row.get("spi:worklog");
-        if (!(wl instanceof List<?> list)) return 0;
-        int n = 0;
+        if (!(wl instanceof List<?> list)) return List.of();
+        List<com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto> out = new ArrayList<>();
         for (Object o : list) {
-            if (o instanceof Map<?, ?> m) {
-                Object desc = ((Map<String, Object>) m).get("spi:description");
-                if (desc != null && LOTO_NOTE_TITLE.equalsIgnoreCase(desc.toString().trim())) n++;
-            }
+            if (!(o instanceof Map<?, ?> m)) continue;
+            Map<String, Object> mm = (Map<String, Object>) m;
+            Object desc = mm.get("spi:description");
+            if (desc == null || !LOTO_NOTE_TITLE.equalsIgnoreCase(desc.toString().trim())) continue;
+            com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto d =
+                    new com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto();
+            d.setDescription(desc.toString());
+            Object ld = mm.get("spi:description_longdescription");
+            if (ld != null) d.setLongDescription(ld.toString());
+            Object cd = mm.get("spi:createdate");
+            if (cd != null) d.setCreatedate(cd.toString());
+            Object cb = mm.get("spi:createby");
+            if (cb != null) d.setCreateby(cb.toString());
+            Object wid = mm.get("spi:worklogid");
+            if (wid instanceof Number num) d.setWorklogid(num.longValue());
+            out.add(d);
         }
-        return n;
+        return out;
     }
 
     /** Add a LOTO isolation note to a WO: a worklog whose title is the {@link #LOTO_NOTE_TITLE} marker and whose

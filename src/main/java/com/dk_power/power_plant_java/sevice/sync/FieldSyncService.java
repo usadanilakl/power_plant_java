@@ -843,6 +843,16 @@ public class FieldSyncService {
                             continue;
                         }
 
+                        // @OneToOne owning-side FK carries the SAME unique-index hazard as the pass-1 apply
+                        // path: if another owner already holds this referenced entity, a bare set flushes two
+                        // rows with the same unique FK → constraint violation → this retry is charged
+                        // FAILED_RETRYABLE (below) and re-pulled, looping. The pass-1 branch releases the prior
+                        // holder before claiming; this retry sweep — which drains the queue that same branch
+                        // feeds when the reference wasn't present yet — must do the same or the two routes
+                        // diverge. Mirrors applyFieldChange's OneToOne branch.
+                        if ("OneToOne".equals(failedRef.change.getRelationshipType())) {
+                            releaseConflictingOneToOneHolders(managedEntity, failedRef.field, referencedId);
+                        }
                         failedRef.field.setAccessible(true);
                         failedRef.field.set(managedEntity, referencedEntity);
                         service.save(managedEntity);
@@ -1781,6 +1791,41 @@ public class FieldSyncService {
                 }
             }
 
+            // @OneToOne owning-side FK: the column is UNIQUE, so the referenced entity can be held by at most
+            // ONE owner. A "move" — the referenced entity reassigned to a different owner, e.g. a Red-Tag
+            // change-box moving a Loto between LotoBoxes — arrives as this owner's set-change while the PRIOR
+            // owner still holds it on this node. Hibernate would then flush two rows with the same unique FK →
+            // constraint violation → the batch rolls back, bisects, and re-pulls FOREVER (the violation is
+            // deemed retryable but the conflicting holder never releases on its own). Release any other owner
+            // currently holding this referenced entity, then claim it here. Runs under sync context, so the
+            // release emits nothing — the move's own clear-change from the origin is then a no-op when it lands.
+            if ("OneToOne".equals(change.getRelationshipType()) && change.getNewValue() != null
+                    && !"null".equals(change.getNewValue())) {
+                String cleanedOneToOne = change.getNewValue().replace("\"", "").trim();
+                if (!cleanedOneToOne.isEmpty()) {
+                    try {
+                        Long referencedId = Long.parseLong(cleanedOneToOne);
+                        String refType = field.getType().getSimpleName();
+                        referencedId = DedupKeyResolver.resolveRemappedId(refType, referencedId, idRemapTable);
+                        Object referencedEntity = entityManager.find(field.getType(), referencedId);
+                        if (referencedEntity == null) {
+                            if (failedManyToOneRefs != null) {
+                                failedManyToOneRefs.add(new FailedManyToOneReference(entity, change, field, referencedId));
+                            }
+                            return false; // referenced entity not present yet — retry when it arrives
+                        }
+                        releaseConflictingOneToOneHolders(entity, field, referencedId);
+                        field.set(entity, referencedEntity);
+                        return true;
+                    } catch (NumberFormatException e) {
+                        log.warn("Could not parse OneToOne FK id from '{}' for type {}",
+                                change.getNewValue(), field.getType().getSimpleName());
+                        note(change, ChangeDisposition.DEAD_LETTER);
+                        return false;
+                    }
+                }
+            }
+
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType(), idRemapTable);
 
             // Remap polymorphic association IDs (entityId on EmailCorrespondence/Comment).
@@ -1835,6 +1880,40 @@ public class FieldSyncService {
             // Unknown failure — may be transient (locking, constraint, session state). Retryable.
             note(change, ChangeDisposition.FAILED_RETRYABLE);
             return false;
+        }
+    }
+
+    /**
+     * Release any OTHER owner currently holding this @OneToOne referenced entity, so the owner being
+     * applied can claim it without tripping the unique FK constraint. This is the receiver half of a
+     * "move" the origin performed (reassign a unique 1:1 reference from owner A to owner B): the origin
+     * emitted both A.ref=null and B.ref=X, but B.ref=X can arrive/apply first — clearing A here makes the
+     * move converge instead of looping forever on the unique-index violation. JPA-managed clear, flushed
+     * before the caller claims the reference, so the unique column is free within this same transaction.
+     * Runs under sync context → the clear emits nothing (the origin's own A.ref=null is a later no-op).
+     */
+    private void releaseConflictingOneToOneHolders(BaseIdEntity owner, Field field, Long referencedId) {
+        try {
+            field.setAccessible(true);
+            String entityName = owner.getClass().getSimpleName();
+            String fieldName = field.getName();
+            List<?> holders = entityManager.createQuery(
+                    "SELECT e FROM " + entityName + " e WHERE e." + fieldName + ".id = :refId AND e.id <> :ownerId")
+                    .setParameter("refId", referencedId)
+                    .setParameter("ownerId", owner.getId())
+                    .getResultList();
+            if (holders.isEmpty()) return;
+            for (Object h : holders) {
+                field.set(h, null); // managed entity → dirtied; the unique FK is released on the flush below
+            }
+            entityManager.flush(); // free the unique FK column BEFORE the caller claims it in this same tx
+            log.info("OneToOne move: released {} prior holder(s) of {}#{} so {}#{}.{} can claim it",
+                    holders.size(), field.getType().getSimpleName(), referencedId, entityName, owner.getId(), fieldName);
+        } catch (Exception e) {
+            // Best-effort: if the release fails, the caller's field.set surfaces the real constraint error as before.
+            log.warn("OneToOne move: failed to release prior holders of {}#{} for {}.{}: {}",
+                    field.getType().getSimpleName(), referencedId, owner.getClass().getSimpleName(),
+                    field.getName(), e.getMessage());
         }
     }
 

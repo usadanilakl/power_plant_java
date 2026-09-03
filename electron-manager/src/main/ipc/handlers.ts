@@ -6,6 +6,7 @@ import { app, ipcMain, shell, dialog, BrowserWindow, session, Menu, MenuItemCons
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as util from 'util';
 import * as events from './events';
 import { SpringBootManager } from '../managers/spring-boot.manager';
 import { WebViewManager } from '../managers/webview.manager';
@@ -214,9 +215,28 @@ export class IpcHandlers {
     const origWarn = console.warn.bind(console);
     const origError = console.error.bind(console);
 
+    // Re-entrancy guard. Without it a throw inside emitLog escapes console.error; with no
+    // uncaughtException handler Electron's default reporter calls console.error to report it,
+    // which lands right back here — infinite recursion until "RangeError: Maximum call stack
+    // size exceeded". That was a live production crash loop on the cork-board kiosk.
+    let inEmit = false;
+
     const emitLog = (level: string, args: any[]) => {
-      const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-      this.springBoot.addLog(`[EM] [${level}] ${msg}`);
+      if (inEmit) return;
+      inEmit = true;
+      try {
+        // util.inspect over JSON.stringify: stringify THROWS on circular structures, and Node
+        // /Electron objects (sockets, IncomingMessage, errors holding request refs) are routinely
+        // circular. inspect renders them as [Circular *1] and never throws.
+        const msg = args
+          .map(a => (typeof a === 'string' ? a : util.inspect(a, { depth: 2, breakLength: Infinity })))
+          .join(' ');
+        this.springBoot.addLog(`[EM] [${level}] ${msg}`);
+      } catch {
+        // Logging must never throw — swallowing here is deliberate.
+      } finally {
+        inEmit = false;
+      }
     };
 
     console.log = (...args: any[]) => {

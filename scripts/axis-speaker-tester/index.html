@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AXIS Speaker API Tester</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b21;
+    --panel-2: #1d222a;
+    --line: #2a313b;
+    --text: #dfe4ea;
+    --muted: #8b95a3;
+    --accent: #4da3ff;
+    --ok: #3fbf7f;
+    --warn: #e0a341;
+    --err: #e5615e;
+    --mono: ui-monospace, "Cascadia Code", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    background: var(--panel); border-bottom: 1px solid var(--line);
+    padding: 10px 16px; position: sticky; top: 0; z-index: 20;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .brand h1 { font-size: 15px; margin: 0; letter-spacing: .3px; }
+  .brand span { color: var(--muted); font-size: 12px; }
+  .conn { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-end; }
+  .f { display: flex; flex-direction: column; gap: 3px; }
+  .f > label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  input, select, textarea, button {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 5px;
+    padding: 6px 8px; font-size: 13px; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+  textarea { font-family: var(--mono); font-size: 12px; resize: vertical; width: 100%; }
+  button { cursor: pointer; background: var(--panel-2); }
+  button:hover { border-color: var(--accent); color: #fff; }
+  button.go { background: var(--accent); border-color: var(--accent); color: #06121f; font-weight: 600; }
+  button.go:hover { filter: brightness(1.1); color: #06121f; }
+  button.tiny { padding: 3px 7px; font-size: 11px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); padding-bottom: 6px; }
+  .chk input { accent-color: var(--accent); }
+
+  main { display: grid; grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr); gap: 14px; padding: 14px 16px 40px; align-items: start; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .card > h2 {
+    margin: 0; padding: 9px 12px; font-size: 13px; font-weight: 600;
+    background: var(--panel-2); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
+  }
+  .card > h2 .verb {
+    font: 600 10px/1 var(--mono); padding: 4px 6px; border-radius: 3px;
+    background: #24405e; color: #9dcaff; letter-spacing: .5px;
+  }
+  .card > h2 .verb.post { background: #2d4a34; color: #96e0b0; }
+  .card > h2 .caret { margin-left: auto; color: var(--muted); font-size: 11px; }
+  .card .body { padding: 11px 12px 13px; display: grid; gap: 9px; }
+  .card.collapsed .body { display: none; }
+  .row { display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-end; }
+  .row > .f { flex: 1 1 130px; }
+  .row > .f input, .row > .f select { width: 100%; }
+  .hint { font-size: 11.5px; color: var(--muted); }
+  .hint code { font-family: var(--mono); color: #b7c4d3; }
+  .path {
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    word-break: break-all; padding: 5px 7px; background: #12161b;
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .path b { color: #b7c4d3; font-weight: 500; }
+  .warnbox { font-size: 11.5px; color: var(--warn); border-left: 2px solid var(--warn); padding-left: 8px; }
+
+  /* response pane */
+  .sticky { position: sticky; top: 108px; }
+  .status { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  .pill { font: 600 12px/1 var(--mono); padding: 5px 9px; border-radius: 4px; background: #333c48; color: var(--text); }
+  .pill.s2 { background: #1e4032; color: #8ee0b4; }
+  .pill.s3 { background: #3c3a1d; color: #e6d78f; }
+  .pill.s4, .pill.s5 { background: #4a2523; color: #ffb2ae; }
+  .meta { font-size: 11.5px; color: var(--muted); }
+  .tabs { display: flex; gap: 2px; padding: 7px 12px 0; background: var(--panel-2); }
+  .tabs button { border: none; background: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 5px 9px; font-size: 12px; color: var(--muted); }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  pre {
+    margin: 0; padding: 11px 12px; font-family: var(--mono); font-size: 12px;
+    white-space: pre-wrap; word-break: break-word; max-height: 52vh; overflow: auto; color: #cfd8e3;
+  }
+  pre .k { color: #9dcaff; }
+  pre .s { color: #a5d6a7; }
+  pre .n { color: #e6c07b; }
+  pre .b { color: #c792ea; }
+
+  .log { max-height: 210px; overflow: auto; }
+  .log .item { display: flex; gap: 9px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12px; }
+  .log .item:hover { background: var(--panel-2); }
+  .log .item .code { font: 600 11px/1 var(--mono); min-width: 30px; }
+  .log .item .lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log .item .t { color: var(--muted); font-size: 11px; }
+  .c2 { color: #8ee0b4; } .c3 { color: #e6d78f; } .c45 { color: #ffb2ae; } .cerr { color: var(--err); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: flex; align-items: center; gap: 6px; font-size: 11.5px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px; padding: 3px 5px 3px 10px;
+  }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .chip .dot.ok { background: var(--ok); }
+  .chip .dot.warning { background: var(--warn); }
+  .chip .dot.error { background: var(--err); }
+  .chip button { border-radius: 20px; }
+  .empty { color: var(--muted); font-size: 12px; font-style: italic; }
+  .probe-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-family: var(--mono); }
+  .probe-row .code { min-width: 34px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>AXIS Speaker API Tester</h1>
+    <span>VAPIX / AXIS Audio Manager Edge &mdash; requests go out through the local Node proxy (Digest auth + no CORS wall)</span>
+  </div>
+  <div class="conn">
+    <div class="f" style="width:88px"><label>Scheme</label>
+      <select id="scheme"><option value="http">http</option><option value="https">https</option></select></div>
+    <div class="f" style="width:190px"><label>Device (host or IP)</label>
+      <input id="host" placeholder="10.10.190.55" autocomplete="off"></div>
+    <div class="f" style="width:80px"><label>Port</label>
+      <input id="port" placeholder="80" autocomplete="off"></div>
+    <div class="f" style="width:140px"><label>Username</label>
+      <input id="username" placeholder="root" autocomplete="off"></div>
+    <div class="f" style="width:150px"><label>Password</label>
+      <input id="password" type="password" autocomplete="off"></div>
+    <div class="f" style="width:120px"><label>Auth</label>
+      <select id="authMode">
+        <option value="auto">auto (anyauth)</option>
+        <option value="digest">digest</option>
+        <option value="basic">basic</option>
+        <option value="none">none</option>
+      </select></div>
+    <div class="f" style="width:90px"><label>Timeout ms</label>
+      <input id="timeoutMs" value="15000"></div>
+    <label class="chk"><input type="checkbox" id="insecure" checked> ignore TLS cert</label>
+    <label class="chk"><input type="checkbox" id="remember"> remember (incl. password)</label>
+    <button class="tiny" id="clearSaved" style="margin-bottom:5px">clear saved</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============================ LEFT: requests ============================ -->
+  <section>
+
+    <div class="card" id="c-info">
+      <h2><span class="verb post">POST</span> Basic device info <span class="caret">&#9662;</span></h2>
+      <div class="body">
+        <div class="hint">Start here. Cheapest way to prove the host, credentials and auth mode all work.</div>
+        <div class="row">
+          <div class="f" style="flex:0 0 110px"><label>apiVersion</label><input id="bdi-ver" value="1.0"></div>
+          <div class="f"><label>method</label>
+            <select id="bdi-method">
+              <option>getAllProperties</option>
+              <option>getAllUnrestrictedProperties</option>
+              <option>getSupportedVersions</option>
+            </select></div>
+          <div class="f" style="flex:0 0 130px"><label>context (optional)</label><input id="bdi-ctx" placeholder=""></div>
+        </div>
+        <div class="path">POST <b>/axis-cgi/basicdeviceinfo.cgi</b></div>
+        <div class="row"><button class="go" data-send="deviceInfo">Send</button><button class="tiny" data-curl="deviceInfo">copy curl</button></div>
+      </div>
+    </div>
+
+    <div class="card" id="c-targets">
+      <h2><span class="verb">GET</span> List targets <span class="caret">&#9662;</span></h2>
+      <div class="body">
+        <div class="hint">All zones and devices managed by AXIS Audio Manager Edge. Results become clickable chips you can push into the play request.</div>
+        <div class="row">
+          <div class="f" style="flex:0 0 120px"><label>API version</label><input id="tg-ver" value="v1.0"></div>
+          <div class="f"><label>Path (editable)</label><input id="tg-path" value="/vapix/aam-edge/api/v1.0/targets"></div>
+        </div>
+        <div class="row"><button class="go" data-send="targets">Send</button><button class="tiny" data-curl="targets">copy curl</button></div>
+        <div><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Discovered targets</label>
+          <div class="chips" id="targetChips" style="margin-top:6px"><span class="empty">none yet &mdash; send the request above</span></div></div>
+      </div>
+    </div>
+
+    <div class="card" id="c-play">
+      <h2><span class="verb post">POST</span> One-shot play audio files <span class="caret">&#9662;</span></h2>
+      <div class="body">
+        <div class="row">
+          <div class="f" style="flex:0 0 120px"><label>API version</label><input id="pl-ver" value="v1.2"></div>
+          <div class="f" style="flex:0 0 110px"><label>prio</label>
+            <select id="pl-prio"><option>high</option><option selected>medium</option><option>low</option></select></div>
+          <div class="f" style="flex:0 0 150px"><label>targets shape</label>
+            <select id="pl-shape">
+              <option value="obj">[{ "id": "..." }]</option>
+              <option value="str">[ "..." ]</option>
+            </select></div>
+        </div>
+        <div class="f"><label>fileIds (comma or newline separated UUIDs)</label>
+          <textarea id="pl-files" rows="2" placeholder="5109a18b-1f48-40d8-b185-586d152fa0e7"></textarea></div>
+        <div class="f"><label>target ids (comma or newline separated)</label>
+          <textarea id="pl-targets" rows="2" placeholder="c9820c2a-08c8-4957-8bb4-db67957fad75"></textarea></div>
+        <label class="chk" style="padding:0"><input type="checkbox" id="pl-raw"> edit raw JSON body instead</label>
+        <div class="f"><label>request body</label><textarea id="pl-body" rows="8" readonly></textarea></div>
+        <div class="path">POST <b id="pl-pathview"></b></div>
+        <div class="row"><button class="go" data-send="play">Send</button><button class="tiny" data-curl="play">copy curl</button></div>
+        <div class="hint">On success the returned session <code>id</code> is copied into the Session ID field below automatically.</div>
+      </div>
+    </div>
+
+    <div class="card" id="c-session">
+      <h2><span class="verb">GET</span>&nbsp;<span class="verb post">POST</span> Audio session &mdash; retrieve / stop <span class="caret">&#9662;</span></h2>
+      <div class="body">
+        <div class="row">
+          <div class="f" style="flex:0 0 120px"><label>API version</label><input id="ss-ver" value="v1.2"></div>
+          <div class="f"><label>audioSessionId</label><input id="ss-id" placeholder="62d3ed6d-7fde-4a5c-90de-0a12c60639ab"></div>
+        </div>
+        <div class="path">GET <b id="ss-getpath"></b></div>
+        <div class="path">POST <b id="ss-stoppath"></b></div>
+        <div class="row">
+          <button class="go" data-send="getSession">Retrieve</button>
+          <button class="go" data-send="stopSession">Stop</button>
+          <button class="tiny" data-curl="getSession">copy GET curl</button>
+          <button class="tiny" data-curl="stopSession">copy STOP curl</button>
+        </div>
+        <div class="hint">Stop returns <code>204 No Content</code> &mdash; an empty body is the success case.</div>
+      </div>
+    </div>
+
+    <div class="card collapsed" id="c-probe">
+      <h2><span class="verb">GET</span> Endpoint probe <span class="caret">&#9662;</span></h2>
+      <div class="body">
+        <div class="warnbox">These paths are <b>guesses, not from your documentation</b> &mdash; the screenshots did not include the audio-files or zones endpoints. The probe just reports each status code so you can see which ones exist on your firmware.</div>
+        <div class="f"><label>candidate paths (one per line)</label>
+          <textarea id="pb-paths" rows="8"></textarea></div>
+        <div class="row"><button class="go" data-send="probe">Probe all</button></div>
+        <div id="pb-results" style="display:grid;gap:4px"></div>
+      </div>
+    </div>
+
+    <div class="card collapsed" id="c-custom">
+      <h2><span class="verb">ANY</span> Custom request <span class="caret">&#9662;</span></h2>
+      <div class="body">
+        <div class="row">
+          <div class="f" style="flex:0 0 110px"><label>method</label>
+            <select id="cu-method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+          <div class="f"><label>path (with query string)</label><input id="cu-path" value="/vapix/aam-edge/api/v1.2/audioSessions"></div>
+        </div>
+        <div class="f"><label>extra headers (one per line, <code>Name: value</code>)</label>
+          <textarea id="cu-headers" rows="2">Content-Type: application/json</textarea></div>
+        <div class="f"><label>body</label><textarea id="cu-body" rows="5"></textarea></div>
+        <div class="row"><button class="go" data-send="custom">Send</button><button class="tiny" data-curl="custom">copy curl</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ RIGHT: response ============================ -->
+  <section class="sticky">
+    <div class="card">
+      <div class="status">
+        <span class="pill" id="rp-status">idle</span>
+        <span class="meta" id="rp-meta">Send a request to see the response here.</span>
+      </div>
+      <div class="tabs">
+        <button class="on" data-tab="body">Body</button>
+        <button data-tab="headers">Headers</button>
+        <button data-tab="curl">curl</button>
+        <button data-tab="req">Request</button>
+      </div>
+      <pre id="rp-out">&mdash;</pre>
+    </div>
+
+    <div class="card">
+      <h2 style="cursor:default">History <span class="caret" id="hist-count"></span></h2>
+      <div class="log" id="rp-log"><div class="item" style="cursor:default;color:var(--muted)">empty</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const PROXY = '/api/proxy';
+const SAVE_KEY = 'axis-speaker-tester';
+
+/* ------------------------------------------------------------ persistence -- */
+const CONN_FIELDS = ['scheme','host','port','username','authMode','timeoutMs'];
+const REQ_FIELDS = ['bdi-ver','bdi-method','bdi-ctx','tg-ver','tg-path','pl-ver','pl-prio','pl-shape',
+                    'pl-files','pl-targets','ss-ver','ss-id','cu-method','cu-path','cu-headers','cu-body','pb-paths'];
+
+const DEFAULT_PROBES = [
+  '/vapix/aam-edge/api/v1.2/audioFiles',
+  '/vapix/aam-edge/api/v1.0/audioFiles',
+  '/vapix/aam-edge/api/v1.2/audioSessions',
+  '/vapix/aam-edge/api/v1.2/zones',
+  '/vapix/aam-edge/api/v1.0/zones',
+  '/vapix/aam-edge/api/v1.0/devices',
+  '/axis-cgi/param.cgi?action=list&group=Properties.Audio'
+].join('\n');
+
+function save() {
+  const data = {};
+  CONN_FIELDS.concat(REQ_FIELDS).forEach((id) => { data[id] = $(id).value; });
+  data.insecure = $('insecure').checked;
+  data.remember = $('remember').checked;
+  if ($('remember').checked) data.password = $('password').value;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) { /* private mode */ }
+}
+
+function load() {
+  $('pb-paths').value = DEFAULT_PROBES;
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { /* ignore */ }
+  if (data) {
+    CONN_FIELDS.concat(REQ_FIELDS).forEach((id) => { if (data[id] !== undefined && data[id] !== '') $(id).value = data[id]; });
+    if (data.insecure !== undefined) $('insecure').checked = data.insecure;
+    if (data.remember) { $('remember').checked = true; $('password').value = data.password || ''; }
+  }
+  refreshDerived();
+}
+
+/* ---------------------------------------------------------------- helpers -- */
+function conn() {
+  return {
+    scheme: $('scheme').value,
+    host: $('host').value.trim(),
+    port: $('port').value.trim() || undefined,
+    username: $('username').value,
+    password: $('password').value,
+    authMode: $('authMode').value,
+    insecure: $('insecure').checked,
+    timeoutMs: Number($('timeoutMs').value) || 15000,
+  };
+}
+
+function splitList(text) {
+  return String(text || '').split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+}
+
+function headerLines(text) {
+  const out = {};
+  String(text || '').split(/\r?\n/).forEach((line) => {
+    const i = line.indexOf(':');
+    if (i > 0) out[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  });
+  return out;
+}
+
+function jsonHeaders() { return { 'Content-Type': 'application/json' }; }
+
+/* --------------------------------------------------------- request builder -- */
+// Each builder returns { label, method, path, headers, body }.
+const BUILD = {
+  deviceInfo() {
+    const payload = { apiVersion: $('bdi-ver').value, method: $('bdi-method').value };
+    const ctx = $('bdi-ctx').value.trim();
+    if (ctx) payload.context = ctx;
+    return { label: 'basicdeviceinfo', method: 'POST', path: '/axis-cgi/basicdeviceinfo.cgi',
+             headers: jsonHeaders(), body: JSON.stringify(payload) };
+  },
+  targets() {
+    return { label: 'list targets', method: 'GET', path: $('tg-path').value.trim(), headers: jsonHeaders(), body: null };
+  },
+  play() {
+    return { label: 'oneshot play', method: 'POST', path: playPath(), headers: jsonHeaders(), body: $('pl-body').value };
+  },
+  getSession() {
+    return { label: 'get session', method: 'GET', path: sessionPath(''), headers: jsonHeaders(), body: null };
+  },
+  stopSession() {
+    return { label: 'stop session', method: 'POST', path: sessionPath('/stopAudioFiles'), headers: jsonHeaders(), body: null };
+  },
+  custom() {
+    const m = $('cu-method').value;
+    const b = $('cu-body').value.trim();
+    return { label: 'custom ' + m, method: m, path: $('cu-path').value.trim(),
+             headers: headerLines($('cu-headers').value), body: b || null };
+  },
+};
+
+function playPath() { return '/vapix/aam-edge/api/' + $('pl-ver').value.trim() + '/audioSessions/oneshotPlayAudioFiles'; }
+function sessionPath(suffix) {
+  return '/vapix/aam-edge/api/' + $('ss-ver').value.trim() + '/audioSessions/' + encodeURIComponent($('ss-id').value.trim()) + suffix;
+}
+
+function buildPlayBody() {
+  const targets = splitList($('pl-targets').value);
+  return JSON.stringify({
+    fileIds: splitList($('pl-files').value),
+    prio: $('pl-prio').value,
+    targets: $('pl-shape').value === 'obj' ? targets.map((id) => ({ id: id })) : targets,
+  }, null, 2);
+}
+
+function refreshDerived() {
+  if (!$('pl-raw').checked) $('pl-body').value = buildPlayBody();
+  $('pl-body').readOnly = !$('pl-raw').checked;
+  $('pl-pathview').textContent = playPath();
+  $('ss-getpath').textContent = sessionPath('');
+  $('ss-stoppath').textContent = sessionPath('/stopAudioFiles');
+  const v = $('tg-ver').value.trim();
+  if (v && !$('tg-path').dataset.touched) $('tg-path').value = '/vapix/aam-edge/api/' + v + '/targets';
+}
+
+/* ------------------------------------------------------------------- curl -- */
+function toCurl(req) {
+  const c = conn();
+  const portPart = c.port ? ':' + c.port : '';
+  const url = c.scheme + '://' + (c.host || '<servername>') + portPart + req.path;
+  const lines = ['curl --request ' + req.method + ' \\'];
+  if (c.authMode === 'auto') lines.push('  --anyauth \\');
+  else if (c.authMode === 'digest') lines.push('  --digest \\');
+  else if (c.authMode === 'basic') lines.push('  --basic \\');
+  if (c.authMode !== 'none') lines.push('  --user "' + (c.username || '<username>') + ':<password>" \\');
+  if (c.scheme === 'https' && c.insecure) lines.push('  --insecure \\');
+  Object.keys(req.headers || {}).forEach((k) => lines.push('  --header "' + k + ': ' + req.headers[k] + '" \\'));
+  if (req.body) lines.push("  --data '" + req.body.replace(/\n\s*/g, ' ') + "' \\");
+  lines.push('  "' + url + '"');
+  return lines.join('\n');
+}
+
+/* --------------------------------------------------------------- response -- */
+let lastResult = null;
+let activeTab = 'body';
+const history = [];
+
+function pretty(text) {
+  if (!text) return '';
+  try { return JSON.stringify(JSON.parse(text), null, 2); } catch (e) { return text; }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+
+function colorJson(text) {
+  return escapeHtml(text)
+    .replace(/&quot;/g, '"')
+    .replace(/"([^"\\]*(?:\\.[^"\\]*)*)"(\s*:)/g, '<span class="k">"$1"</span>$2')
+    .replace(/:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g, ': <span class="s">"$1"</span>')
+    .replace(/:\s*(-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
+    .replace(/:\s*(true|false|null)/g, ': <span class="b">$1</span>');
+}
+
+function renderTab() {
+  const out = $('rp-out');
+  if (!lastResult) { out.textContent = '\u2014'; return; }
+  const r = lastResult;
+  if (activeTab === 'body') {
+    if (r.error) { out.innerHTML = '<span style="color:var(--err)">' + escapeHtml(r.error) + '</span>'; return; }
+    const text = pretty(r.body);
+    if (!text) { out.innerHTML = '<span style="color:var(--muted)">(empty body)</span>'; return; }
+    out.innerHTML = colorJson(text);
+  } else if (activeTab === 'headers') {
+    const h = r.headers || {};
+    out.textContent = Object.keys(h).map((k) => k + ': ' + h[k]).join('\n') || '(none)';
+  } else if (activeTab === 'curl') {
+    out.textContent = r.curl || '';
+  } else {
+    out.textContent = [
+      r.req.method + ' ' + r.req.path,
+      'auth used: ' + (r.authUsed || 'n/a'),
+      'attempts: ' + (r.attempts || []).map((a) => a.auth + ' -> ' + a.status).join('  |  '),
+      '',
+      'request body:',
+      r.req.body || '(none)',
+    ].join('\n');
+  }
+}
+
+function statusClass(code) {
+  if (!code) return '';
+  return 's' + String(code)[0];
+}
+
+function renderResult(r) {
+  lastResult = r;
+  const pill = $('rp-status');
+  const meta = $('rp-meta');
+  if (r.error) {
+    pill.className = 'pill s5';
+    pill.textContent = 'ERROR';
+    meta.textContent = r.code ? r.code : 'no response';
+  } else {
+    pill.className = 'pill ' + statusClass(r.status);
+    pill.textContent = r.status + ' ' + (r.statusText || '');
+    meta.textContent = r.timeMs + ' ms \u00b7 ' + r.bytes + ' bytes \u00b7 auth: ' + r.authUsed +
+      (r.truncated ? ' \u00b7 TRUNCATED' : '');
+  }
+  renderTab();
+  pushHistory(r);
+}
+
+function pushHistory(r) {
+  history.unshift(r);
+  if (history.length > 25) history.pop();
+  $('hist-count').textContent = history.length + ' request' + (history.length === 1 ? '' : 's');
+  const log = $('rp-log');
+  log.innerHTML = '';
+  history.forEach((h, i) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    const cls = h.error ? 'cerr' : (String(h.status)[0] === '2' ? 'c2' : String(h.status)[0] === '3' ? 'c3' : 'c45');
+    div.innerHTML = '<span class="code ' + cls + '">' + (h.error ? 'ERR' : h.status) + '</span>' +
+                    '<span class="lbl">' + escapeHtml(h.req.label) + '</span>' +
+                    '<span class="t">' + (h.error ? '' : h.timeMs + 'ms') + '</span>';
+    div.onclick = () => { lastResult = history[i]; renderResultQuiet(history[i]); };
+    log.appendChild(div);
+  });
+}
+
+function renderResultQuiet(r) {
+  const pill = $('rp-status');
+  if (r.error) { pill.className = 'pill s5'; pill.textContent = 'ERROR'; $('rp-meta').textContent = r.code || 'no response'; }
+  else {
+    pill.className = 'pill ' + statusClass(r.status);
+    pill.textContent = r.status + ' ' + (r.statusText || '');
+    $('rp-meta').textContent = r.timeMs + ' ms \u00b7 ' + r.bytes + ' bytes \u00b7 auth: ' + r.authUsed;
+  }
+  renderTab();
+}
+
+/* ------------------------------------------------------------------- send -- */
+async function send(kind) {
+  const req = BUILD[kind]();
+  if (!$('host').value.trim()) { alert('Set the device host or IP first.'); return; }
+  const payload = Object.assign({}, conn(), {
+    method: req.method, path: req.path, headers: req.headers, body: req.body,
+  });
+  $('rp-status').className = 'pill';
+  $('rp-status').textContent = 'sending\u2026';
+  $('rp-meta').textContent = req.method + ' ' + req.path;
+  let res;
+  try {
+    const raw = await fetch(PROXY, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    res = await raw.json();
+  } catch (e) {
+    res = { ok: false, error: 'Local proxy unreachable: ' + e.message + '. Is server.js running?' };
+  }
+  res.req = req;
+  res.curl = toCurl(req);
+  renderResult(res);
+  if (!res.error) afterResponse(kind, res);
+  save();
+  return res;
+}
+
+function afterResponse(kind, res) {
+  if (kind === 'targets') renderTargets(res);
+  if (kind === 'play') {
+    try {
+      const j = JSON.parse(res.body);
+      const id = j.id || (j.audioSession && j.audioSession.id);
+      if (id) { $('ss-id').value = id; refreshDerived(); }
+    } catch (e) { /* non-JSON response */ }
+  }
+}
+
+function renderTargets(res) {
+  const box = $('targetChips');
+  let list;
+  try { list = JSON.parse(res.body); } catch (e) { list = null; }
+  if (!Array.isArray(list)) list = (list && Array.isArray(list.targets)) ? list.targets : null;
+  if (!list || !list.length) {
+    box.innerHTML = '<span class="empty">response was not a target array &mdash; see Body tab</span>';
+    return;
+  }
+  box.innerHTML = '';
+  list.forEach((t) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    const state = (t.status && t.status.type) || '';
+    chip.innerHTML = '<span class="dot ' + escapeHtml(state) + '"></span>' +
+      '<span title="' + escapeHtml(t.id || '') + '">' + escapeHtml(t.niceName || t.name || t.id || '?') +
+      ' <span style="color:var(--muted)">' + escapeHtml(t.type || '') + '</span></span>';
+    const btn = document.createElement('button');
+    btn.className = 'tiny';
+    btn.textContent = '+ target';
+    btn.onclick = () => {
+      const cur = splitList($('pl-targets').value);
+      if (t.id && cur.indexOf(t.id) === -1) cur.push(t.id);
+      $('pl-targets').value = cur.join('\n');
+      refreshDerived();
+      save();
+    };
+    chip.appendChild(btn);
+    box.appendChild(chip);
+  });
+}
+
+async function probe() {
+  const paths = String($('pb-paths').value).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const box = $('pb-results');
+  box.innerHTML = '';
+  for (const p of paths) {
+    const row = document.createElement('div');
+    row.className = 'probe-row';
+    row.innerHTML = '<span class="code" style="color:var(--muted)">...</span><span>' + escapeHtml(p) + '</span>';
+    box.appendChild(row);
+    const payload = Object.assign({}, conn(), { method: 'GET', path: p, headers: jsonHeaders(), body: null });
+    let res;
+    try {
+      const raw = await fetch(PROXY, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      res = await raw.json();
+    } catch (e) { res = { error: e.message }; }
+    const code = res.error ? 'ERR' : res.status;
+    const cls = res.error ? 'cerr' : (String(res.status)[0] === '2' ? 'c2' : String(res.status)[0] === '3' ? 'c3' : 'c45');
+    row.querySelector('.code').className = 'code ' + cls;
+    row.querySelector('.code').textContent = code;
+    if (!res.error && String(res.status)[0] === '2') {
+      const use = document.createElement('button');
+      use.className = 'tiny';
+      use.textContent = 'open in custom';
+      use.onclick = () => { $('cu-path').value = p; $('cu-method').value = 'GET'; $('c-custom').classList.remove('collapsed'); $('cu-path').scrollIntoView({ block: 'center' }); };
+      row.appendChild(use);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ wiring -- */
+document.querySelectorAll('[data-send]').forEach((b) => {
+  b.onclick = () => { const k = b.dataset.send; if (k === 'probe') probe(); else send(k); };
+});
+document.querySelectorAll('[data-curl]').forEach((b) => {
+  b.onclick = async () => {
+    const text = toCurl(BUILD[b.dataset.curl]());
+    try { await navigator.clipboard.writeText(text); b.textContent = 'copied!'; }
+    catch (e) { b.textContent = 'see curl tab'; }
+    lastResult = lastResult || { req: BUILD[b.dataset.curl](), headers: {}, body: '' };
+    lastResult.curl = text;
+    setTimeout(() => { b.textContent = b.textContent.replace(/copied!|see curl tab/, 'copy curl'); }, 1200);
+  };
+});
+document.querySelectorAll('.tabs button').forEach((b) => {
+  b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+    activeTab = b.dataset.tab;
+    renderTab();
+  };
+});
+document.querySelectorAll('.card > h2').forEach((h) => {
+  if (h.parentElement.id) h.onclick = () => h.parentElement.classList.toggle('collapsed');
+});
+['pl-files','pl-targets','pl-prio','pl-shape','pl-ver','ss-ver','ss-id','tg-ver'].forEach((id) => {
+  $(id).addEventListener('input', () => { refreshDerived(); save(); });
+  $(id).addEventListener('change', () => { refreshDerived(); save(); });
+});
+$('tg-path').addEventListener('input', () => { $('tg-path').dataset.touched = '1'; save(); });
+$('pl-raw').addEventListener('change', refreshDerived);
+CONN_FIELDS.concat(['password']).forEach((id) => $(id).addEventListener('change', save));
+$('insecure').addEventListener('change', save);
+$('remember').addEventListener('change', save);
+$('clearSaved').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} $('password').value = ''; $('remember').checked = false; };
+
+load();
+</script>
+</body>
+</html>

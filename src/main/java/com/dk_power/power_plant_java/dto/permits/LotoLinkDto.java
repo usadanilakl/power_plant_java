@@ -12,5 +12,10 @@ public record LotoLinkDto(
         String status,           // permitStatus name: Building / Active / Test / Closed
         String equipmentSystem,
         String lotoRequestor,
-        List<String> linkedWonums
+        List<String> linkedWonums,
+        // Extra identifiers for the outage "Covered by LOTO: …" comment + grouping headers.
+        String redTagNum,
+        Long docNum,
+        Integer boxNumber,
+        String workScope
 ) {}

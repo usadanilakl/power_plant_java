@@ -110,6 +110,7 @@ public class NgMaximoController {
     private final com.dk_power.power_plant_java.repository.users.UserRepo userRepo;
     private final PhysicalObjectMaximoSeeder physicalObjectSeeder;
     private final PhysicalObjectRepo physicalObjects;
+    private final com.dk_power.power_plant_java.sevice.maximo.MaximoOutageCoverageService outageCoverage;
 
     /** Work-type options. The MXDOMAIN OS isn't API-authorized, so these mirror the values in use at JG. */
     private static final List<Map<String, String>> WORK_TYPES = List.of(
@@ -480,6 +481,48 @@ public class NgMaximoController {
     }
 
     public record LotoNoteRequest(String text) {}
+
+    // ── Outage LOTO coverage (group-by-LOTO + bulk-assign) ───────────────────────────────────
+
+    /** Outage WOs enriched with LOTO-coverage flags + the non-closed LOTO catalog (grouping headers + assign picker). */
+    @GetMapping("/work-orders/outage/coverage")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.maximo.OutageCoverageDto>> outageCoverage(
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "pageSize", defaultValue = "300") int pageSize) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(outageCoverage.listCoverage(siteid, pageSize), "ok"));
+        } catch (Exception e) {
+            log.warn("[Maximo] outage coverage failed: {}", e.getMessage());
+            return ResponseEntity.status(502).body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Bulk-assign one LOTO to many outage WOs: link each + post the "Covered by LOTO: …" worklog to each newly linked. */
+    @PostMapping("/work-orders/outage/assign-loto")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.maximo.AssignLotoResultDto>> assignLoto(
+            @RequestBody com.dk_power.power_plant_java.dto.maximo.AssignLotoRequest req) {
+        try {
+            if (req == null || req.lotoId() == null)
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "lotoId is required"));
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    outageCoverage.assignLoto(req.lotoId(), req.targets(), currentUserName()), "assigned"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.warn("[Maximo] outage assign-loto failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /** Display name of the signed-in user (for the "Linked by …" comment line); null when unresolved. */
+    private String currentUserName() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return null;
+        Object principal = auth.getPrincipal();
+        if (!(principal instanceof com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails cud)) return null;
+        return userRepo.findById(cud.getId())
+                .map(com.dk_power.power_plant_java.entities.users.User::getName).orElse(null);
+    }
 
     // ── TOI/TMOD (Temporary Operation Instruction / Temporary Modification) records ──────────
 

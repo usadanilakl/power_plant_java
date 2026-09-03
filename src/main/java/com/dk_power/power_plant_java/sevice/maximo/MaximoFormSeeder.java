@@ -27,6 +27,9 @@ public class MaximoFormSeeder {
     private final MaximoFormService formService;
     private final ObjectMapper objectMapper;
 
+    /** Maximo location the RO-probe out-of-tolerance Work Request is filed against (the demin-water RO skids). */
+    private static final String RO_WR_LOCATION = "00-DMW-RO";
+
     /** Seed all curated procedure forms; returns the saved templates. */
     public List<MaximoFormTemplateDto> seedProcedureForms() {
         List<MaximoFormTemplateDto> out = new ArrayList<>();
@@ -783,7 +786,12 @@ public class MaximoFormSeeder {
                     .computed(base + "_delta", "Δ Probe − Sample (" + tag + ")",
                             base + "_probe - " + base + "_sample", null,
                             "Max Delta " + maxDelta + " — if the probe and sample differ by more than " + maxDelta
-                                    + ", write a Service Request to calibrate this probe.");
+                                    + ", write a Service Request to calibrate this probe.")
+                    // When |Δ| exceeds the Max Delta the form offers a one-tap Work Request (SR) prefilled against
+                    // the RO skids location with this text — no need to leave the PM to raise the calibration WR.
+                    .alert(Double.parseDouble(maxDelta), true, RO_WR_LOCATION,
+                            "RO probe out of tolerance — " + measurement + " (" + tag + "): probe and sample differ by "
+                                    + "more than the Max Delta of " + maxDelta + ". Calibrate/verify this probe.");
         }
     }
 
@@ -921,6 +929,22 @@ public class MaximoFormSeeder {
             if (unit != null) m.put("unit", unit);
             if (note != null) m.put("note", note);
             list.add(m);
+            return this;
+        }
+
+        /**
+         * Attach an out-of-tolerance alert to the LAST-added field: when the value (or its magnitude when
+         * {@code abs}) exceeds {@code threshold}, the form shows a prompt to file a Work Request prefilled with
+         * {@code wrLocation} + {@code wrText}. Used on the RO-probe Δ fields so an out-of-spec probe raises a
+         * calibration WR in one tap.
+         */
+        Fields alert(double threshold, boolean abs, String wrLocation, String wrText) {
+            if (list.isEmpty()) return this;
+            Map<String, Object> m = list.get(list.size() - 1);
+            m.put("alertThreshold", threshold);
+            if (abs) m.put("alertAbs", true);
+            if (wrLocation != null) m.put("alertWrLocation", wrLocation);
+            if (wrText != null) m.put("alertWrText", wrText);
             return this;
         }
 

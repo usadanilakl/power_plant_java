@@ -138,6 +138,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Parts', icon: '📦', route: '/maximo/parts', access: 'plant', hubOnly: true },
       { label: 'Outage Items', shortLabel: 'Outage', icon: '⚡', route: '/maximo/outage', access: 'plant', hubOnly: true },
       { label: 'TOI / TMOD', shortLabel: 'TOI', icon: '📋', route: '/maximo/toi', access: 'plant', hubOnly: true },
+      { label: 'Ammonia Offload', shortLabel: 'Ammonia', icon: '🧪', route: '/maximo/ammonia', access: 'plant', hubOnly: true },
     ],
   },
   {

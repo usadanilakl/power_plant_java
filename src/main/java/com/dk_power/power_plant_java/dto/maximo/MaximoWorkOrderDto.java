@@ -45,4 +45,14 @@ public class MaximoWorkOrderDto {
     /** How many LOTO isolation notes this WO already has (worklog rows titled "LOTO ISOLATION"); populated by
      *  the outage-items query from the inline worklog, so the card can show a "note added" indicator. */
     private int lotoNoteCount;
+
+    // ── Outage-coverage enrichment (only the /work-orders/outage/coverage query sets these) ──────────────
+    /** True when this WO is covered by at least one non-closed LOTO — either a structured link
+     *  ({@code Loto.linkedWonums}) OR a LOTO number found in the WO's LOTO worklog text. Null off the coverage query. */
+    private Boolean covered;
+    /** IDs of the non-closed LOTOs covering this WO (structured link ∪ parsed-from-log). Empty when uncovered. */
+    private java.util.List<Long> coveringLotoIds;
+    /** Earliest / latest createdate across this WO's LOTO worklog rows (ISO strings) — powers the log-time range filter. */
+    private String lotoNoteEarliest;
+    private String lotoNoteLatest;
 }

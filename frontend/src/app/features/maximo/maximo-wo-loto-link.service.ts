@@ -12,6 +12,11 @@ export interface LotoLink {
   equipmentSystem?: string;
   lotoRequestor?: string;
   linkedWonums: string[];
+  // Extra identifiers used by the outage grouping headers + the "Covered by LOTO: …" comment.
+  redTagNum?: string;
+  docNum?: number;
+  boxNumber?: number;
+  workScope?: string;
 }
 
 /** WO↔LOTO linking calls the LOTO endpoints (`/ng/lotos/...`), separate from the Maximo (`/ng/maximo`) base. */

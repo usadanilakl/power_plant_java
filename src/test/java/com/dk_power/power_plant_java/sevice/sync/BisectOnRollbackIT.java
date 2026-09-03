@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
-import com.dk_power.power_plant_java.entities.instrumentation.Instrument;
+import com.dk_power.power_plant_java.entities.esp.EspDevice;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import jakarta.persistence.EntityManager;
@@ -29,8 +29,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the batch is bisected on rollback: the poison is isolated to a size-1 sub-batch and it alone stays
  * FAILED_RETRYABLE, while the healthy changes apply and are acked.
  *
- * <p>The poison is a real DB unique-constraint violation (Instrument.tagNumber is {@code unique=true},
- * and the test DB keeps unique constraints — only NOT NULL is relaxed by SyncSchemaPreparation).
+ * <p>The poison is a real DB unique-constraint violation on {@code EspDevice.ipAddress}
+ * ({@code @Column(unique=true)}); the test DB keeps unique constraints — only NOT NULL is relaxed by
+ * SyncSchemaPreparation. (The earlier poison, Instrument.tagNumber, stopped violating once that unique
+ * constraint was intentionally dropped in the 2026-08-25 deterministic-coexist dedup batch — see the
+ * "NOT @Column(unique=true)" note on Instrument.tagNumber.)
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -65,13 +68,13 @@ class BisectOnRollbackIT {
         });
     }
 
-    private long givenInstrument(String tag) {
+    private long givenEspDevice(String ip) {
         return new TransactionTemplate(txManager).execute(s -> {
-            Instrument i = new Instrument();
-            i.setTagNumber(tag);
-            entityManager.persist(i);
+            EspDevice d = new EspDevice();
+            d.setIpAddress(ip);
+            entityManager.persist(d);
             entityManager.flush();
-            return i.getId();
+            return d.getId();
         });
     }
 
@@ -89,9 +92,9 @@ class BisectOnRollbackIT {
                         .setParameter("id", id).getSingleResult());
     }
 
-    private String instrumentTag(long id) {
+    private String espDeviceIp(long id) {
         return new TransactionTemplate(txManager).execute(s ->
-                (String) entityManager.createQuery("SELECT i.tagNumber FROM Instrument i WHERE i.id = :id")
+                (String) entityManager.createQuery("SELECT d.ipAddress FROM EspDevice d WHERE d.id = :id")
                         .setParameter("id", id).getSingleResult());
     }
 
@@ -100,11 +103,11 @@ class BisectOnRollbackIT {
     void wholeBatch_chargesInnocentNeighbours() {
         setFlag(false);
         long p1 = givenLotoPoint("BIS-OFF-P1");
-        givenInstrument("BIS-OFF-A");             // holds tag BIS-OFF-A
-        long instrB = givenInstrument("BIS-OFF-B");
+        givenEspDevice("BIS-OFF-A");              // holds ipAddress BIS-OFF-A
+        long espB = givenEspDevice("BIS-OFF-B");
 
         FieldChange healthy = update("LotoPoint", p1, "description", "\"healed\"");
-        FieldChange poison = update("Instrument", instrB, "tagNumber", "\"BIS-OFF-A\""); // duplicate → unique violation
+        FieldChange poison = update("EspDevice", espB, "ipAddress", "\"BIS-OFF-A\""); // duplicate → unique violation
 
         DispositionLedger ledger = fieldSyncService.applyIncomingChangesForTest(List.of(healthy, poison), false, null);
 
@@ -120,11 +123,11 @@ class BisectOnRollbackIT {
         setFlag(true);
         long p1 = givenLotoPoint("BIS-ON-P1");
         long p2 = givenLotoPoint("BIS-ON-P2");
-        givenInstrument("BIS-ON-A");
-        long instrB = givenInstrument("BIS-ON-B");
+        givenEspDevice("BIS-ON-A");
+        long espB = givenEspDevice("BIS-ON-B");
 
         FieldChange healthy1 = update("LotoPoint", p1, "description", "\"healed-1\"");
-        FieldChange poison = update("Instrument", instrB, "tagNumber", "\"BIS-ON-A\""); // duplicate → unique violation
+        FieldChange poison = update("EspDevice", espB, "ipAddress", "\"BIS-ON-A\""); // duplicate → unique violation
         FieldChange healthy2 = update("LotoPoint", p2, "description", "\"healed-2\"");
 
         DispositionLedger ledger = fieldSyncService.applyIncomingChangesForTest(
@@ -137,6 +140,6 @@ class BisectOnRollbackIT {
         assertThat(ledger.of(healthy2)).as("healthy neighbour 2 applied, not charged").isEqualTo(ChangeDisposition.APPLIED);
         assertThat(lotoDescription(p1)).isEqualTo("healed-1");
         assertThat(lotoDescription(p2)).isEqualTo("healed-2");
-        assertThat(instrumentTag(instrB)).as("the poison did not apply — tag unchanged").isEqualTo("BIS-ON-B");
+        assertThat(espDeviceIp(espB)).as("the poison did not apply — ipAddress unchanged").isEqualTo("BIS-ON-B");
     }
 }

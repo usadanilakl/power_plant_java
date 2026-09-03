@@ -137,6 +137,12 @@ export interface MaximoFormFieldDef {
   /** 'timer' only: show a "time since {field} started → take the sample at {minutes} min" prompt, and
    *  optionally auto-fill the measured interval minutes into {fillInto} when this timer is started. */
   waitAfter?: { field: string; minutes: number; fillInto?: string };
+  /** 'computed' only: when the result exceeds this threshold (magnitude when alertAbs), the form shows an
+   *  out-of-tolerance prompt to file a Work Request prefilled with alertWrLocation + alertWrText. */
+  alertThreshold?: number;
+  alertAbs?: boolean;
+  alertWrLocation?: string;
+  alertWrText?: string;
 }
 
 export interface MaximoFormTemplate {
