@@ -29,7 +29,7 @@ public class MaximoWorkOrderAdapter {
     /** Maximo LABTRANS.LABORCODE max length on this instance — a longer personid isn't a valid laborcode. */
     private static final int MAX_LABORCODE_LEN = 8;
     private static final String SELECT_FIELDS =
-            "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
+            "spi:workorderid,spi:wonum,spi:description,spi:description_longdescription,spi:status,"
             + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
             + "spi:targstartdate,spi:targcompdate,spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority,spi:pmnum,spi:statusdate,spi:reportedby";
 
@@ -351,6 +351,17 @@ public class MaximoWorkOrderAdapter {
      */
     public List<MaximoWorkOrderDto> listByOutageType(List<String> types, String siteid, int pageSize) {
         return listOutageWithNotes(types, siteid, pageSize).stream().map(OutageWo::wo).toList();
+    }
+
+    /** Resolve a WO's OSLC href from its wonum (exact match), or null. For WO-scoped writes like the Q&A worklog. */
+    public String findHrefByWonum(String wonum) {
+        if (wonum == null || wonum.isBlank()) return null;
+        MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
+        c.setWonumContains(wonum.trim());
+        for (MaximoWorkOrderDto w : listByCriteria(c, 20)) {
+            if (wonum.trim().equalsIgnoreCase(w.getWonum())) return w.getHref();
+        }
+        return null;
     }
 
     /** An outage WO row paired with its LOTO isolation worklog rows (mapped from the ONE inline worklog select). */
@@ -831,6 +842,7 @@ public class MaximoWorkOrderAdapter {
     private MaximoWorkOrderDto map(Map<String, Object> row) {
         MaximoWorkOrderDto d = new MaximoWorkOrderDto();
         d.setHref(hrefId(row));
+        d.setWorkorderid(MaximoOslcMapper.longVal(row, "workorderid"));   // numeric PK — the WO-conversation anchor
         d.setWonum(str(row, "wonum"));
         d.setDescription(str(row, "description"));
         d.setLongDescription(str(row, "description_longdescription"));

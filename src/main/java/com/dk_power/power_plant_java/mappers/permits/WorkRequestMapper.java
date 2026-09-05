@@ -255,6 +255,17 @@ public class WorkRequestMapper implements BaseMapper {
         }
 
         dto.setAreaNotSpecified(entity.getWorkArea() == null);
+
+        // Operator processing override, plus the effective values generation should read.
+        dto.setOperatorWorkAreas(entity.getOperatorWorkAreas());
+        dto.setOperatorAffectedEquipment(entity.getOperatorAffectedEquipment());
+        dto.setOperatorWorkScope(entity.getOperatorWorkScope());
+        dto.setOperatorOverrideBy(entity.getOperatorOverrideBy());
+        dto.setOperatorOverrideAt(entity.getOperatorOverrideAt());
+        dto.setEffectiveWorkAreas(entity.getEffectiveWorkAreas());
+        dto.setEffectiveAffectedEquipment(entity.getEffectiveAffectedEquipment());
+        dto.setEffectiveWorkScope(entity.getEffectiveWorkScope());
+
         dto.setSuggestedJobLogId(entity.getSuggestedJobLogId());
         dto.setDeclaredHazards(entity.getDeclaredHazards());
         dto.setDeclaredHotWorkMeasures(entity.getDeclaredHotWorkMeasures());
@@ -296,6 +307,16 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(dto.getSpace());
         if (dto.getWorkAreas() != null) entity.setWorkAreas(dto.getWorkAreas());
+        // Operator override. Null is "the client did not send this", not "clear it" — the WR
+        // detail and table screens post the whole DTO back for unrelated edits, and a plain
+        // assignment there would silently drop an override set from the package builder.
+        // Clearing is done through NgWorkRequestService.clearOperatorOverride.
+        if (dto.getOperatorWorkAreas() != null) entity.setOperatorWorkAreas(dto.getOperatorWorkAreas());
+        if (dto.getOperatorAffectedEquipment() != null) {
+            entity.setOperatorAffectedEquipment(dto.getOperatorAffectedEquipment());
+        }
+        if (dto.getOperatorWorkScope() != null) entity.setOperatorWorkScope(dto.getOperatorWorkScope());
+        // effective* are derived — never written back.
         entity.setSharepointId(dto.getSharepointId());
         entity.setLocalUuid(dto.getLocalUuid());
 

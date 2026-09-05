@@ -183,6 +183,8 @@ export interface PwaConversationDto {
   initiatorUnreadCount: number;
   responderUnreadCount: number;
   currentUserUnreadCount: number;
+  maximoWonum?: string;
+  directedToMe?: boolean;
 }
 
 export interface PwaMessageDto {
@@ -741,6 +743,24 @@ export class ServerApiService {
     );
   }
 
+  /** Active users {id, name} for the WO Q&A directed-recipients picker. */
+  getDirectableUsers(): Observable<{ id: number; name: string }[]> {
+    return this.http.get<{ responseData: { id: number; name: string }[] }>(`${this.baseUrl}/api/pwa/secured/conversations/directable-users`).pipe(
+      timeout(10000),
+      map(response => response.responseData ?? []),
+      catchError(this.handleError)
+    );
+  }
+
+  /** The WO Q&A inbox: all OPEN Maximo-WO questions (inclusive), each flagged directedToMe. */
+  getWoOpenQuestions(): Observable<PwaConversationDto[]> {
+    return this.http.get<{ responseData: PwaConversationDto[] }>(`${this.baseUrl}/api/pwa/secured/conversations/wo-open`).pipe(
+      timeout(10000),
+      map(response => response.responseData ?? []),
+      catchError(this.handleError)
+    );
+  }
+
   getConversationsForEntity(entityType: string, entityId: number): Observable<PwaConversationDto[]> {
     return this.http.get<{ responseData: PwaConversationDto[] }>(`${this.baseUrl}/api/pwa/secured/conversations/for-entity/${entityType}/${entityId}`).pipe(
       timeout(10000),
@@ -749,7 +769,7 @@ export class ServerApiService {
     );
   }
 
-  startConversation(body: { entityType: string; entityId: number; responderId?: number; subject: string; initialMessageContent: string }): Observable<PwaConversationDto> {
+  startConversation(body: { entityType: string; entityId: number; responderId?: number; subject: string; initialMessageContent: string; maximoWonum?: string; directedUserIds?: string }): Observable<PwaConversationDto> {
     return this.http.post<{ responseData: PwaConversationDto }>(`${this.baseUrl}/api/pwa/secured/conversations/start`, body).pipe(
       timeout(15000),
       map(response => response.responseData),

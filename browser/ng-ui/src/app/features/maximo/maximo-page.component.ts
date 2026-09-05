@@ -37,6 +37,7 @@ type Tab = 'wo' | 'sr';
               <button class="mx-pm" (click)="goOutage()">⚡ Outage</button>
               <button class="mx-pm" (click)="goToi()">📋 TOI</button>
               <button class="mx-pm" (click)="goAmmonia()">🧪 Ammonia</button>
+              <button class="mx-pm" (click)="goWoQuestions()">💬 Q&A</button>
               <button class="mx-new" (click)="newRequest()">+ New</button>
             </div>
           </div>
@@ -352,6 +353,7 @@ export class MaximoPageComponent implements OnInit {
   goOutage(): void { this.router.navigate(['/maximo/outage']); }
   goToi(): void { this.router.navigate(['/maximo/toi']); }
   goAmmonia(): void { this.router.navigate(['/maximo/ammonia']); }
+  goWoQuestions(): void { this.router.navigate(['/maximo/wo-questions']); }
 
   openWo(w: MaximoWorkOrder): void { this.woDetail.set(w); }
   refresh(): void { this.reload$.next(); }

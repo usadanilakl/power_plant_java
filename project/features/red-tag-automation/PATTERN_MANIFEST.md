@@ -29,21 +29,88 @@ sheet is written to `.crop_tmp/contact-sheet.png` for visual review.
 
 ## ⚠️ Resolution dependency
 
-These crops are pixel-real slices of screenshots taken at the operator's desktop
-resolution. They match the live screen **only at that same resolution / DPI**.
-On a different display, recapture the screenshots and re-run the script. The
+A SikuliX pattern matches only at the scale it was captured at, and the permit
+forms are document views whose scale follows the window size, the monitor's DPI
+and whatever Ctrl+wheel the last operator left behind. Historically each drift
+was handled by recapturing crops on the machine that had drifted, which is how
+the catalogue ended up holding **three different scales at once** (Safe Work
+labels at ~2×, its section headers at ~1×, Hot Work rows at ~2.5×) and why the
+automation broke whenever a display changed.
+
+Since 2026-09-04 the **form** patterns are measured instead of recaptured:
+
+- All Safe Work and Hot Work form crops come from **one** capture pass, at the
+  zoom where a whole permit fits the window (SW form 873 px wide, HW 947 px).
+- `SikuliDriver.calibrateScale` finds a section anchor across a ladder of zooms
+  when the form opens, and `PatternCatalog` rescales every form pattern by the
+  result. Pixel offsets go through `SikuliDriver.px`.
+- Only patterns listed in `RedTagPattern.FORM_CONTENT` are rescaled. Application
+  chrome — tabs, toolbar buttons, dialogs, grid headers — keeps the OS widget
+  scale and is left alone.
+
+So a form at an unexpected zoom no longer needs new screenshots. Genuine
+**layout** changes still do; see below.
+
 `redtag.automation.default-similarity` (0.80) absorbs minor anti-aliasing
-differences; lower it slightly if matches are flaky.
+differences; rescaled patterns are matched a little looser again, floored at
+0.62, because resampling softens glyph edges.
+
+## Safe Work + Hot Work form patterns (2026-09-03 capture)
+
+The Hot Work permit was reissued on **2026-08-27** — the checklist went from 12
+rows to 9 with new wording, and Work Type, Initial Air Test, continuous air
+monitoring, the Fire Watch duration block and the issuer-approval line are all
+new. `PermitFormSeeder.seedHotWorkPage1` is the transcription of that paper and
+is the authority for the row order and field bindings.
+
+Both permits' form patterns were re-cut from screenshots of the reissued forms:
+
+```
+pwsh project/features/red-tag-automation/import-form-patterns.ps1 `
+     -Manifest project/features/red-tag-automation/form-patterns-2026-09-03.manifest `
+     -Src "<folder of form screenshots>"
+```
+
+The manifest maps each screenshot to its destination pattern and an import mode:
+
+| Mode | What it does |
+|---|---|
+| `copy` | the crop is already a usable pattern |
+| `crop` | cut an `x,y,w,h` rectangle out (used for section bars and header labels, taken from the whole-form screenshots) |
+| `swbox` | Safe Work checkbox label — normalises the crop so the checkbox border sits 2 px in, and reports the checkbox centre (came out 8–10 px across all 59) |
+| `hwrow` | Hot Work checklist row — trims off the teal Y/NA band so the pattern is **text only**, and reports the Y / NA centres relative to the trimmed edge (−51 / −15) |
+
+### No anchor may contain a checkbox
+
+A Hot Work permit opens **pre-answered** — every checklist `Y`, "Fire Protection
+System in service" and the 30-minute fire watch are already selected, and the
+meter model is pre-filled. So a pattern that includes a box only matches the
+state it was captured in, and stops matching the moment the automation (or a
+person) changes it — which breaks re-runs and resumed steps.
+
+Every anchor is therefore cropped clear of its boxes: `hwrow` trims the Y/NA
+band off the checklist rows, and the Work Type, Fire Protection, Fire Watch and
+confined-space anchors are cut down to their label or header strip. Each crop
+keeps its original top-left corner, so the pixel offsets in `HotWorkBuildFlow`
+stay valid — the boxes are reached by offset from the anchor, never matched
+directly. `HotWorkBuildFlow` reads each box before clicking it, so state is set,
+not toggled blindly.
+
+Section-bar patterns are cropped tight around their **text**, not the whole bar.
+A full-width black bar is mostly black, so two different bars score alike — tight
+text crops are what keep "INITIAL AIR TEST" from matching "HOT WORK PERMIT
+CHECKLIST".
 
 ## Pattern inventory (56)
 
 The table below lists the original LOTO patterns. LOTO-information-form patterns
-(`loto-details/*`) and Safe Work patterns (`safe-work/*`) were added later — see
-`generate-patterns.py` for the full, authoritative list. The Safe Work checkbox
-**grid** uses no per-checkbox images: each checkbox is a calibrated offset from
-its section-header pattern (`safe-work/{hazards,permits,ppe}-header.png`) — the
-offset constants live in `SafeWorkBuildFlow` and need one calibration pass
-against the live app.
+(`loto-details/*`) came later — see `generate-patterns.py` for that list, and the
+manifest above for every Safe Work and Hot Work form pattern.
+
+Safe Work and Hot Work checkboxes are matched **per label**: one crop each under
+`<permit>/labels/`, clicked at a fixed offset from the crop's left edge. This
+replaced an OCR-read-the-lines approach that could not survive Tesseract
+returning different bounding boxes for asterisked vs plain labels.
 
 | Logical name | Source screenshot | Output file |
 |---|---|---|

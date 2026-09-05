@@ -193,23 +193,57 @@ public enum RedTagPattern {
     SW_ASSOCIATE_ISSUED_PERMITS_TAB("safe-work/associate-issued-permits-tab.png",
             "The 'Issued Permits' tab at the bottom of the associate dialog"),
 
-    // ---- Hot Work permit ----------------------------------------------------
+    // ---- Hot Work permit (2026-08-27 form revision) -------------------------
     // NEW PERMIT / Issue-with-NO-Template / Save / permit-# column are shared
     // toolbar/list elements — reuse the SW_* patterns. Only these are HW-specific.
+    //
+    // The form was reissued on 2026-08-27: the old 12-row Y/NA checklist became 9 rows, and
+    // Initial Air Test, continuous-monitoring, Fire Watch duration and issuer-approval blocks
+    // were added. Every pattern below is cropped from the 2026-09-03 capture of that revision.
     HW_TAB("hot-work/tab.png", "The 'Hot Work' tab in the top bar", 0.70, true),
+    HW_CHECKLIST_HEADER("hot-work/checklist-header.png",
+            "The 'HOT WORK PERMIT CHECKLIST' section bar (scroll/region anchor)"),
     HW_SECTION_HEADER("hot-work/section-header.png",
-            "The 'HOT WORK PERMIT CHECKLIST AND APPROVAL SECTION' header (scroll/region anchor)"),
-    HW_LOCATION_LABEL("hot-work/location-label.png", "The 'Location of Hot Work:' label"),
-    HW_DATE_LABEL("hot-work/date-label.png", "The 'Date' label in the Hot Work header"),
-    HW_FOREMAN_LABEL("hot-work/foreman-label.png", "The '(Person Performing Work):' label"),
-    HW_FIRE_WATCH_NAME_LABEL("hot-work/fire-watch-name-label.png", "The 'Name of Fire Watch:' label"),
-    HW_METER_MODEL_LABEL("hot-work/meter-model-label.png", "The 'Test Equipment Model #:' label"),
-    HW_SERIAL_LABEL("hot-work/serial-label.png", "The 'Serial #:' label"),
-    HW_CAL_DATE_LABEL("hot-work/cal-date-label.png", "The 'Cal Date:' label"),
-    HW_FIRE_WATCH_REQUIRED("hot-work/fire-watch-required.png",
-            "The 'Fire Watch Required' row with its Y/N checkboxes"),
+            "The 'HOT WORK REQUIREMENTS AND APPROVAL SECTION' bar (scroll/region anchor)"),
+    HW_INITIAL_AIR_TEST_HEADER("hot-work/initial-air-test-header.png",
+            "The 'INITIAL AIR TEST' section bar (scroll/region anchor)"),
+    HW_LOCATION_LABEL("hot-work/location-label.png", "The 'Location:' label and its field"),
+    HW_DATE_LABEL("hot-work/date-label.png", "The 'Date' label and its field in the Hot Work header"),
+    HW_WORK_TYPE_ROW("hot-work/work-type-row.png",
+            "The 'Work Type:' row — Welding / Griding / Cutting / Brazing boxes plus the Other field"),
+    HW_FIRE_PROTECTION_ROW("hot-work/fire-protection-row.png",
+            "The 'Fire Protection System in service' / 'NOT in service' bars with their boxes and Date/Time"),
+    HW_METER_MODEL_LABEL("hot-work/meter-model-label.png", "Initial Air Test 'Model:' label and field"),
+    HW_SERIAL_LABEL("hot-work/serial-label.png", "Initial Air Test 'Serial #' label and field"),
+    HW_CAL_DATE_LABEL("hot-work/cal-date-label.png", "Initial Air Test 'Cal Date' label and field"),
+    HW_INITIAL_TEST_TIME_LABEL("hot-work/initial-test-time-label.png",
+            "Initial Air Test 'Time:' label and field"),
+    HW_INITIAL_TEST_INITIALS_LABEL("hot-work/initial-test-initials-label.png",
+            "Initial Air Test 'Initials:' label and field"),
+    HW_INITIAL_TEST_LEL_LABEL("hot-work/initial-test-lel-label.png",
+            "Initial Air Test 'LEL (under 10%)' label and field"),
+    HW_CONT_MODEL_LABEL("hot-work/cont-model-label.png",
+            "Continuous-monitoring 'Model:' column header and field"),
+    HW_CONT_SERIAL_LABEL("hot-work/cont-serial-label.png",
+            "Continuous-monitoring 'Serial #' column header and field"),
+    HW_CONT_CAL_DATE_LABEL("hot-work/cont-cal-date-label.png",
+            "Continuous-monitoring 'Cal Date' column header and field"),
+    HW_LOGGED_ON_CONF_SPACE("hot-work/logged-on-conf-space.png",
+            "The 'Logged On Conf. Space Perm.' column header and its checkbox"),
+    HW_FIRE_WATCH_ROW("hot-work/fire-watch-row.png",
+            "The 'Fire Watch' 1 Hour / 30 Min / Not Required header block with its three boxes"),
+    HW_PERSON_PERFORMING_LABEL("hot-work/person-performing-label.png",
+            "The 'Person Performing Work:' label and its field"),
+    HW_FIRE_WATCH_NAME_LABEL("hot-work/fire-watch-name-label.png",
+            "The 'Fire Watch Name' label and its field"),
     HW_SPECIAL_INSTRUCTIONS_LABEL("hot-work/special-instructions-label.png",
-            "The 'Special Instructions:' label on the Hot Work form"),
+            "The 'Special Instructions:' label and its field on the Hot Work form"),
+    HW_ISSUER_SIGNATURE_LABEL("hot-work/issuer-signature-label.png",
+            "The 'Hot Work Permit Approved (Issuer Signature):' label and its field"),
+    HW_APPROVED_DATE_LABEL("hot-work/approved-date-label.png",
+            "The issuer-approval 'Date:' label and its field"),
+    HW_APPROVED_TIME_LABEL("hot-work/approved-time-label.png",
+            "The issuer-approval 'Time:' label and its field"),
 
     // ---- Confined Space permit ---------------------------------------------
     // Two tab variants (one per ConfinedSpaceType). NEW PERMIT / Issue-with-NO-
@@ -236,6 +270,37 @@ public enum RedTagPattern {
             "The 'Lockout/Tagout (#' precautions label + number field"),
     CS_PREC_HOT_WORK_PERMIT_LABEL("confined-space/prec-hot-work-permit-label.png",
             "The 'Hot Work Permit (#' precautions label + number field");
+
+    /**
+     * The patterns that live <b>inside a permit form</b>, as opposed to the application's own
+     * chrome (tabs, toolbar buttons, dialogs, grid headers).
+     *
+     * <p>The distinction matters because only form content is zoomable: the Red Tag form is a
+     * document view whose scale follows the window, the monitor DPI and the last Ctrl+wheel,
+     * while the surrounding buttons stay at the OS widget scale. So
+     * {@code PatternCatalog.setScale} must rescale these and leave everything else alone —
+     * scaling the Save button by the form's zoom is how you end up clicking empty toolbar.
+     *
+     * <p>Label crops under {@code <permit>/labels/} are all form content and are handled
+     * directly by the catalogue; they never appear in this enum.
+     */
+    private static final java.util.Set<RedTagPattern> FORM_CONTENT = java.util.EnumSet.of(
+            SW_HAZARDS_HEADER, SW_PERMITS_HEADER, SW_PPE_HEADER,
+            SW_DATE_ISSUED_LABEL, SW_LOCATION_LABEL, SW_DESCRIPTION_LABEL,
+            SW_SPECIAL_INSTRUCTIONS_LABEL, SW_REQUESTOR_LABEL,
+            HW_CHECKLIST_HEADER, HW_SECTION_HEADER, HW_INITIAL_AIR_TEST_HEADER,
+            HW_LOCATION_LABEL, HW_DATE_LABEL, HW_WORK_TYPE_ROW, HW_FIRE_PROTECTION_ROW,
+            HW_METER_MODEL_LABEL, HW_SERIAL_LABEL, HW_CAL_DATE_LABEL,
+            HW_INITIAL_TEST_TIME_LABEL, HW_INITIAL_TEST_INITIALS_LABEL, HW_INITIAL_TEST_LEL_LABEL,
+            HW_CONT_MODEL_LABEL, HW_CONT_SERIAL_LABEL, HW_CONT_CAL_DATE_LABEL,
+            HW_LOGGED_ON_CONF_SPACE, HW_FIRE_WATCH_ROW,
+            HW_PERSON_PERFORMING_LABEL, HW_FIRE_WATCH_NAME_LABEL, HW_SPECIAL_INSTRUCTIONS_LABEL,
+            HW_ISSUER_SIGNATURE_LABEL, HW_APPROVED_DATE_LABEL, HW_APPROVED_TIME_LABEL,
+            CS_SECTION_HEADER_GENERAL, CS_SECTION_HEADER_HAZARDS,
+            CS_SECTION_HEADER_PRECAUTIONS, CS_SECTION_HEADER_PPE,
+            CS_SPACE_LABEL, CS_DATE_LABEL, CS_PURPOSE_LABEL, CS_START_TIME_LABEL,
+            CS_ISSUED_TO_LABEL, CS_DURATION_LABEL,
+            CS_PREC_LOCKOUT_TAGOUT_LABEL, CS_PREC_HOT_WORK_PERMIT_LABEL);
 
     private final String relativePath;
     private final String description;
@@ -277,5 +342,10 @@ public enum RedTagPattern {
 
     public boolean needsCapture() {
         return needsCapture;
+    }
+
+    /** @see #FORM_CONTENT */
+    public boolean isFormContent() {
+        return FORM_CONTENT.contains(this);
     }
 }

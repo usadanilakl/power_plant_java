@@ -9,6 +9,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class MaximoWorkOrderDto {
     private String href;
+    /** Maximo numeric WO primary key (WORKORDER.WORKORDERID) — stable anchor for WO-scoped conversations (Q&A). */
+    private Long workorderid;
     private String wonum;
     private String description;
     private String longDescription;

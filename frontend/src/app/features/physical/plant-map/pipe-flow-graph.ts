@@ -25,6 +25,8 @@ interface FlowEdge {
   b: string;
   path: { x: number; y: number }[];
   direction: 'forward' | 'reverse' | 'both';
+  /** A zero-length logical gate (a check valve): it constrains BFS traversal but is never drawn. */
+  gate?: boolean;
 }
 
 function pathAlong(points: { x: number; y: number }[]): number[] {
@@ -102,6 +104,9 @@ export function tracePipeFlow(
   boundaries: FlowBoundaryPort[],
   isValve: (fitting: PipeFitting) => boolean,
   equipmentNetworks: EquipmentPortNetwork[] = [],
+  /** For a check valve, the ONE direction it permits along the pipe's A→B geometry ('forward' = A→B); null for a
+   *  plain valve. It becomes a one-way gate so flow passes one way and is blocked the other. */
+  checkGate: (fitting: PipeFitting) => 'forward' | 'reverse' | null = () => null,
 ): Map<string, PipeFlowResult> {
   const result = new Map<string, PipeFlowResult>();
   const all = pipes.filter(pipe => pipe.nodeId != null && pipe.points.length >= 2);
@@ -144,6 +149,7 @@ export function tracePipeFlow(
 
   const edges: FlowEdge[] = [];
   const barriers = new Set<string>();
+  const checkGates = new Map<string, 'forward' | 'reverse'>(); // gate node → permitted along-pipe direction
   let edgeIndex = 0;
   for (const pipe of all) {
     const cumulative = pathAlong(pipe.points);
@@ -162,6 +168,8 @@ export function tracePipeFlow(
       const node = `${pipe.id}:valve:${fitting.id}`;
       pointsOfInterest.push({ along: projectedDistance(pipe.points, cumulative, fitting.at), node });
       if (fitting.closed) barriers.add(node);
+      const gate = checkGate(fitting);
+      if (gate) checkGates.set(node, gate);
     }
     pointsOfInterest.sort((left, right) => left.along - right.along);
     const distinct = pointsOfInterest.filter((item, index) => !index
@@ -174,6 +182,15 @@ export function tracePipeFlow(
         direction: pipe.flowDirection ?? (pipe.flowReversed ? 'reverse' : 'both'),
       });
     }
+  }
+
+  // Turn each check-valve node into a one-way gate: the segments AFTER it (which start at the node) are re-based on
+  // a new `out` node, and a zero-length directional gate edge bridges in→out. BFS can then cross the valve only in
+  // its permitted direction. A closed check valve keeps its barrier (blocks both ways) — the gate is harmless there.
+  for (const [gateNode, direction] of checkGates) {
+    const outNode = `${gateNode}:out`;
+    for (const edge of edges) if (edge.a === gateNode) edge.a = outNode;
+    edges.push({ id: `edge:${edgeIndex++}`, pipeId: '', a: gateNode, b: outNode, path: [], direction, gate: true });
   }
 
   const nodeEdges = new Map<string, FlowEdge[]>();
@@ -210,6 +227,7 @@ export function tracePipeFlow(
   }
 
   for (const edge of edges) {
+    if (edge.gate) continue; // logical gate — never drawn
     const forward = reachedEdges.get(edge.id);
     if (forward == null) continue;
     const path = forward ? edge.path : [...edge.path].reverse();

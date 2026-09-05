@@ -45,4 +45,17 @@ export class CurrentWorkRequestService {
             this.selectedWorkRequestSubject.next(this.normalizeWorkRequest(response.responseData));
         });
     }
+
+    /**
+     * Republishes a request the caller has just saved, without a re-fetch.
+     *
+     * <p>For screens that change the selected request through an endpoint of their own — the
+     * package builder's area / equipment / scope override is the first — so everything bound to
+     * the selection redraws from one place. Pushing here rather than emitting an `@Output` means
+     * a host that forgot to wire the event cannot leave the operator looking at stale values
+     * while the server holds the new ones.
+     */
+    updateSelectedWorkRequest(workRequest: Partial<WorkRequestDto> | null | undefined) {
+        this.selectedWorkRequestSubject.next(this.normalizeWorkRequest(workRequest));
+    }
 }

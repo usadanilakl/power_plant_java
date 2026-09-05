@@ -12,6 +12,7 @@ import { MaximoFormBuilderPageComponent } from '../features/maximo/maximo-form-b
 import { MaximoFormFillPageComponent } from '../features/maximo/maximo-form-fill-page/maximo-form-fill-page.component';
 import { MaximoOutageItemsPageComponent } from '../features/maximo/maximo-outage-items-page/maximo-outage-items-page.component';
 import { MaximoToiPageComponent } from '../features/maximo/maximo-toi-page/maximo-toi-page.component';
+import { MaximoWoQuestionsPageComponent } from '../features/maximo/maximo-wo-questions-page/maximo-wo-questions-page.component';
 
 export const MAXIMO_ROUTES: Routes = [
   { path: 'maximo', redirectTo: 'maximo/assets', pathMatch: 'full' },
@@ -20,6 +21,7 @@ export const MAXIMO_ROUTES: Routes = [
   { path: 'maximo/work-orders', component: MaximoWorkOrdersPageComponent },
   { path: 'maximo/outage-items', component: MaximoOutageItemsPageComponent },
   { path: 'maximo/toi', component: MaximoToiPageComponent },
+  { path: 'maximo/wo-questions', component: MaximoWoQuestionsPageComponent },
   { path: 'maximo/parts-checkout', component: MaximoPartsCheckoutPageComponent },
   { path: 'maximo/inventory', component: MaximoInventoryPageComponent },
   { path: 'maximo/pm-scheduling', component: MaximoPmPageComponent },

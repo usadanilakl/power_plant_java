@@ -2,6 +2,8 @@
 
 export interface MaximoWorkOrder {
   href: string;
+  /** Maximo numeric WO primary key (WORKORDERID) — anchor for WO-scoped Q&A conversations. */
+  workorderid?: number;
   wonum: string;
   description: string;
   longDescription: string;

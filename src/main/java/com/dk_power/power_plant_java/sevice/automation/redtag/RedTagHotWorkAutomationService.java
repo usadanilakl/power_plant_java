@@ -77,10 +77,11 @@ public class RedTagHotWorkAutomationService {
         steps.add(new AutomationStep(0, "open-app", "Open Red Tag Application", "setup", PERMIT_TYPE, id));
         steps.add(new AutomationStep(1, "login", "Log in to Red Tag", "setup", PERMIT_TYPE, id));
         steps.add(new AutomationStep(2, "open-form", "Open Hot Work Form", "hotWork", PERMIT_TYPE, id));
-        steps.add(new AutomationStep(3, "fill-header", "Fill Header", "hotWork", PERMIT_TYPE, id));
-        steps.add(new AutomationStep(4, "fill-measures", "Fill Checklist", "hotWork", PERMIT_TYPE, id));
-        steps.add(new AutomationStep(5, "fill-footer", "Fill Special Instructions", "hotWork", PERMIT_TYPE, id));
-        steps.add(new AutomationStep(6, "save", "Save & Read Permit Number", "hotWork", PERMIT_TYPE, id));
+        steps.add(new AutomationStep(3, "fill-header", "Fill Header & Work Type", "hotWork", PERMIT_TYPE, id));
+        steps.add(new AutomationStep(4, "fill-measures", "Fill Checklist & Fire Protection", "hotWork", PERMIT_TYPE, id));
+        steps.add(new AutomationStep(5, "fill-air-test", "Fill Initial Air Test", "hotWork", PERMIT_TYPE, id));
+        steps.add(new AutomationStep(6, "fill-requirements", "Fill Requirements & Approval", "hotWork", PERMIT_TYPE, id));
+        steps.add(new AutomationStep(7, "save", "Save & Read Permit Number", "hotWork", PERMIT_TYPE, id));
         session.setSteps(steps);
         return session;
     }
@@ -92,7 +93,8 @@ public class RedTagHotWorkAutomationService {
         actions.put("open-form", hotWorkBuildFlow::openHotWorkForm);
         actions.put("fill-header", () -> hotWorkBuildFlow.fillHeader(hw));
         actions.put("fill-measures", () -> hotWorkBuildFlow.fillMeasures(hw));
-        actions.put("fill-footer", () -> hotWorkBuildFlow.fillFooter(hw));
+        actions.put("fill-air-test", () -> hotWorkBuildFlow.fillInitialAirTest(hw));
+        actions.put("fill-requirements", () -> hotWorkBuildFlow.fillRequirements(hw));
         actions.put("save", () -> {
             hotWorkBuildFlow.save();
             String number = hotWorkBuildFlow.readPermitNumber();

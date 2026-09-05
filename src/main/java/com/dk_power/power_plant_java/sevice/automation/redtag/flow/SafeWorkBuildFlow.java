@@ -17,22 +17,25 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Automates building a Safe Work permit in Red Tag, per
  * {@code project/features/red-tag-automation/create-permit.md}:
- * open the Safe Work tab, start a new permit with no template, zoom the form
- * out, fill the header + hazard / permit / PPE checkboxes + footer, save, and
- * read the new permit number back.
+ * open the Safe Work tab, start a new permit with no template, fill the header +
+ * hazard / permit / PPE checkboxes + footer, save, and read the new permit number back.
+ *
+ * <p>The form is left at whatever zoom it opens at; {@link SikuliDriver#calibrateScale}
+ * measures that zoom once and every pattern and offset below is scaled to it. Offsets are
+ * written in <b>captured-form pixels</b> and go through {@link SikuliDriver#px}.
  *
  * <h2>Checkbox grid — per-label image matching</h2>
- * Every checkbox is a small auto-generated PNG crop ("checkbox + label") at
- * {@code safe-work/labels/<key>.png}, produced once per machine by
- * {@code SwLabelPatternGenerator}. To tick a checkbox we image-find its crop
- * inside the right section region and click {@code (match.x + 12,
- * match.y + match.h / 2)} — the checkbox centre inside the crop (crops include
- * {@code CROP_LEFT_PAD = 25 px} of pixels to the left of the label, where the
- * checkbox lives).
+ * Every checkbox is a small PNG crop ("checkbox + label") at
+ * {@code safe-work/labels/<key>.png}, cut from the 2026-09-03 form capture by
+ * {@code import-form-patterns.ps1}. To tick a checkbox we image-find its crop inside the
+ * right section region and click {@code (match.x + CHECKBOX_X_OFFSET, match.y + match.h / 2)} —
+ * the checkbox centre inside the crop, which the importer normalises to a constant position.
  *
  * <p>This replaces the previous OCR-readlines-and-guess-the-column approach,
  * which was inconsistent because Tesseract returns different bounding boxes
@@ -47,21 +50,31 @@ public class SafeWorkBuildFlow {
 
     /**
      * Distance from the LEFT edge of a label-crop match to the checkbox centre.
-     * Measured across the captured normal-zoom crops (MeasureCheckboxOffsetIT):
-     * the checkbox spans roughly x=0..44 of each crop, centre ≈ 22.
+     *
+     * <p>Measured over all 59 crops when they were imported from the 2026-09-03 capture: the
+     * importer normalises every crop so the checkbox border sits 2 px in, and the reported
+     * centre came out 8-10 px across the whole set.
      */
-    private static final int CHECKBOX_X_OFFSET = 22;
+    private static final int CHECKBOX_X_OFFSET = 9;
+
+    /** Checkbox side in captured-form pixels — the sample window for reading tick state. */
+    private static final int CHECKBOX_SIZE = 16;
 
     /**
      * Offset from a checkbox-crop match's top-left to the free-text field that sits
-     * just below-right of it (the "Type" box under Respirator/Dust Mask and
-     * Protective Gloves, etc.). Measured from the combined crops
-     * (MeasureTypeFieldOffsetsIT): the field's left edge is ~80 px right of the
-     * crop origin and ~55 px below the checkbox row. We click well inside the
-     * field so a few px of variance still lands in it.
+     * just below-right of it — the "Type" box under Respirator/Dust Mask and under
+     * Protective Gloves. Measured off the PPE section capture, where the field starts
+     * ~29 px right of the crop origin and ~32 px below the checkbox row; we click well
+     * inside it so a few px of variance still lands in the field.
      */
-    private static final int FIELD_BELOW_DX = 120;
-    private static final int FIELD_BELOW_DY = 80;
+    private static final int FIELD_BELOW_DX = 66;
+    private static final int FIELD_BELOW_DY = 32;
+
+    /**
+     * How far inside the right edge of a crop that includes its input box to click, so the
+     * click lands in the field rather than on its border ("Other ___", the permit "#" boxes).
+     */
+    private static final int FIELD_RIGHT_INSET = 12;
 
     /**
      * Time to let the freshly-opened form finish painting its fields BEFORE we scan
@@ -78,13 +91,12 @@ public class SafeWorkBuildFlow {
     private static final double SECTION_TOP_FRACTION = 0.45;
 
     // === Header / footer field offsets (from label-crop centre) ===
-    // Measured at normal zoom from header.png / footer.png field detection
-    // (MeasureHeaderFooterFieldsIT) against the label crops' known centres.
-    private static final int DATE_FIELD_DY = 55;      // Date field sits below its label
-    private static final int LOCATION_FIELD_DX = 310; // field to the right, same row
-    private static final int DESCRIPTION_FIELD_DX = 420;
-    private static final int SPECIAL_INSTR_DY = 76;   // large text area below the label
-    private static final int REQUESTOR_FIELD_DX = 106, REQUESTOR_FIELD_DY = 40; // field below-right, after the "X"
+    // Measured off the 2026-09-03 full-form capture against each label crop's centre.
+    private static final int DATE_FIELD_DY = 23;      // Date field sits below its label
+    private static final int LOCATION_FIELD_DX = 206; // field to the right, same row
+    private static final int DESCRIPTION_FIELD_DX = 249;
+    private static final int SPECIAL_INSTR_DY = 29;   // large text area below the label
+    private static final int REQUESTOR_FIELD_DX = 51, REQUESTOR_FIELD_DY = 22; // field below-right, after the "X"
 
     private final SikuliDriver driver;
     private final RedTagAutomationProperties properties;
@@ -117,8 +129,12 @@ public class SafeWorkBuildFlow {
         // already rendered, so it matches on the first scan).
         driver.parkMouse();
         driver.sleep(FORM_SETTLE_MS);
+        // Measure the zoom the form actually rendered at, once, while the hazards bar is on
+        // screen. Every find and pixel offset below then rides the measured scale, so the
+        // build survives a form that is not at the zoom the patterns were captured at.
+        double scale = driver.calibrateScale(RedTagPattern.SW_HAZARDS_HEADER);
         driver.waitFor(RedTagPattern.SW_HAZARDS_HEADER, 15);
-        return "Safe Work form opened";
+        return String.format("Safe Work form opened (zoom %.2fx)", scale);
     }
 
     /** Retries OCR for "Issue Permit" — the post-NEW-PERMIT dialog renders intermittently. */
@@ -143,15 +159,17 @@ public class SafeWorkBuildFlow {
     public String fillHeader(SafeWorkDto sw) {
         scrollToTop();
         // Date / Time / Company sit in a row — fill the date field, then TAB across.
-        driver.clickOffset(RedTagPattern.SW_DATE_ISSUED_LABEL, 0, DATE_FIELD_DY);
+        driver.clickOffset(RedTagPattern.SW_DATE_ISSUED_LABEL, 0, driver.px(DATE_FIELD_DY));
         driver.paste(formatDate(sw.getDate()));
         driver.pressTab();
         driver.paste(nullToEmpty(sw.getTime()));
         driver.pressTab();
         driver.paste(nullToEmpty(sw.getCompanyPerson()));
 
-        driver.pasteAt(RedTagPattern.SW_LOCATION_LABEL, LOCATION_FIELD_DX, 0, nullToEmpty(sw.getLocation()));
-        driver.pasteAt(RedTagPattern.SW_DESCRIPTION_LABEL, DESCRIPTION_FIELD_DX, 0, nullToEmpty(sw.getWorkScope()));
+        driver.pasteAt(RedTagPattern.SW_LOCATION_LABEL, driver.px(LOCATION_FIELD_DX), 0,
+                nullToEmpty(sw.getLocation()));
+        driver.pasteAt(RedTagPattern.SW_DESCRIPTION_LABEL, driver.px(DESCRIPTION_FIELD_DX), 0,
+                nullToEmpty(sw.getWorkScope()));
         return "Safe Work header filled";
     }
 
@@ -212,11 +230,13 @@ public class SafeWorkBuildFlow {
         Region sect = sectionRegion(RedTagPattern.SW_PERMITS_HEADER, RedTagPattern.SW_PPE_HEADER);
         log.info("[RedTag SW] permits section ({},{}) {}x{}", sect.x, sect.y, sect.w, sect.h);
 
-        // The first four permits carry a "#" field to their right for the related
-        // permit/procedure number; fill it when a description was entered.
-        fillFieldRight(tickLabel(sect, p.isLotoRequired(), "loto-required"), p.getLotoDescription());
-        fillFieldRight(tickLabel(sect, p.isHotWork(), "hot-work-permit"), p.getHotWorkDescription());
-        fillFieldRight(tickLabel(sect, p.isConfinedSpace(), "confined-space"), p.getConfinedSpaceDescription());
+        // LOTO / Hot Work / Confined Space carry a "#" field, but their numbers are written by
+        // the Associate flow, which links the permits Red Tag actually issued. Typing our local
+        // description into the same box would put a second, unlinked number beside them —
+        // right at best, and silently contradicting the association at worst. Tick only.
+        tickLabel(sect, p.isLotoRequired(), "loto-required");
+        tickLabel(sect, p.isHotWork(), "hot-work-permit");
+        tickLabel(sect, p.isConfinedSpace(), "confined-space");
         tickLabel(sect, p.isExcavationPermit(), "excavation-permit");
         fillFieldRight(tickLabel(sect, p.isEnergizedPermit(), "energized-elec-wp"), p.getEnergizedPermitDescription());
         fillFieldRight(tickLabel(sect, p.isVentingPurging(), "venting-purging"), p.getVentingPurgingDescription());
@@ -272,13 +292,35 @@ public class SafeWorkBuildFlow {
     // --- Footer --------------------------------------------------------------
 
     /** Fills Special Instructions and the Requestor signature line. */
-    public String fillFooter(SafeWorkDto sw) {
+    public String fillFooter(SafeWorkDto sw, List<Integer> lotoBoxNumbers) {
         scrollToSection(RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL);
-        driver.pasteAt(RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL, 0, SPECIAL_INSTR_DY,
-                nullToEmpty(sw.getSpecialInstructions()));
-        driver.pasteAt(RedTagPattern.SW_REQUESTOR_LABEL, REQUESTOR_FIELD_DX, REQUESTOR_FIELD_DY,
-                nullToEmpty(sw.getRequestedBy()));
+        String instructions = specialInstructionsWithBoxes(sw, lotoBoxNumbers);
+        driver.pasteAt(RedTagPattern.SW_SPECIAL_INSTRUCTIONS_LABEL, 0, driver.px(SPECIAL_INSTR_DY),
+                instructions);
+        driver.pasteAt(RedTagPattern.SW_REQUESTOR_LABEL, driver.px(REQUESTOR_FIELD_DX),
+                driver.px(REQUESTOR_FIELD_DY), nullToEmpty(sw.getRequestedBy()));
         return "Safe Work footer filled";
+    }
+
+    /**
+     * Appends the lock-box numbers of the package's LOTOs to Special Instructions.
+     *
+     * <p>The box is what a worker actually walks up to, and the permit's own "LOTO Required #"
+     * box is written by the Associate flow with Red Tag's LOTO numbers, not box numbers — so
+     * without this the tag never says which box to go to. Appended rather than substituted:
+     * whatever the issuer wrote stays, and stays first.
+     */
+    private String specialInstructionsWithBoxes(SafeWorkDto sw, List<Integer> lotoBoxNumbers) {
+        String instructions = nullToEmpty(sw.getSpecialInstructions()).trim();
+        if (lotoBoxNumbers == null || lotoBoxNumbers.isEmpty()) {
+            log.info("[RedTag SW] no LOTO lock boxes on this permit's package — "
+                    + "Special Instructions left as written");
+            return instructions;
+        }
+        String note = (lotoBoxNumbers.size() == 1 ? "LOTO Box: " : "LOTO Boxes: ")
+                + lotoBoxNumbers.stream().map(String::valueOf).collect(Collectors.joining(", "));
+        log.info("[RedTag SW] Special Instructions note: {}", note);
+        return instructions.isEmpty() ? note : instructions + " | " + note;
     }
 
     // --- Save / read-back ----------------------------------------------------
@@ -453,8 +495,15 @@ public class SafeWorkBuildFlow {
                     + "(is the crop present for this machine's zoom?)", key);
             return null;
         }
-        int clickX = m.x + CHECKBOX_X_OFFSET;
+        int clickX = m.x + driver.px(CHECKBOX_X_OFFSET);
         int clickY = m.y + m.h / 2;
+        // Read before clicking. Every Safe Work box is clear on a fresh permit, so this is
+        // normally a no-op — but a click toggles, and if one ever does arrive ticked (a
+        // template, a re-run over a part-filled permit) a blind click would clear it.
+        if (driver.isTicked(clickX, clickY, CHECKBOX_SIZE)) {
+            log.info("[RedTag SW] [{}] already ticked @ ({},{})", key, clickX, clickY);
+            return m;
+        }
         log.info("[RedTag SW] tick [{}] @ ({},{}) — crop matched at ({},{}) {}x{}",
                 key, clickX, clickY, m.x, m.y, m.w, m.h);
         new Location(clickX, clickY).click();
@@ -470,12 +519,12 @@ public class SafeWorkBuildFlow {
      */
     private void fillFieldBelow(Match checkbox, String text) {
         if (checkbox == null || text == null || text.isBlank()) return;
-        int clickX = checkbox.x + FIELD_BELOW_DX;
-        int clickY = checkbox.y + FIELD_BELOW_DY;
+        int clickX = checkbox.x + driver.px(FIELD_BELOW_DX);
+        int clickY = checkbox.y + driver.px(FIELD_BELOW_DY);
         log.info("[RedTag SW] fill field below checkbox @ ({},{}) = '{}'", clickX, clickY, text);
         new Location(clickX, clickY).click();
         driver.sleep(60);
-        driver.paste(text);
+        driver.replacePaste(text);
         driver.sleep(40);
     }
 
@@ -488,12 +537,12 @@ public class SafeWorkBuildFlow {
      */
     private void fillFieldRight(Match checkbox, String text) {
         if (checkbox == null || text == null || text.isBlank()) return;
-        int clickX = checkbox.x + checkbox.w - 25;
+        int clickX = checkbox.x + checkbox.w - driver.px(FIELD_RIGHT_INSET);
         int clickY = checkbox.y + checkbox.h / 2;
         log.info("[RedTag SW] fill field right of checkbox @ ({},{}) = '{}'", clickX, clickY, text);
         new Location(clickX, clickY).click();
         driver.sleep(60);
-        driver.paste(text);
+        driver.replacePaste(text);
         driver.sleep(40);
     }
 

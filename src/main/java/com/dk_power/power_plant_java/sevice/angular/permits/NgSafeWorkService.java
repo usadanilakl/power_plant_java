@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.angular.permits;
 
 import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.SafeWork;
 import com.dk_power.power_plant_java.mappers.permits.SafeWorkMapper;
 import com.dk_power.power_plant_java.repository.permits.SafeWorkRepo;
@@ -126,5 +127,29 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     @Override
     public SafeWorkDto toDto(SafeWork entity) {
         return safeWorkMapper.convertToDto(entity);
+    }
+
+    /**
+     * Lock-box numbers of the LOTOs in this Safe Work's daily package — deduplicated (several
+     * LOTOs commonly share one box) and sorted, so the caller can print them as-is.
+     *
+     * <p>Lives here rather than on {@link SafeWorkDto} because it is not part of the permit:
+     * it is a fact about the package the permit belongs to, read at the moment it is needed.
+     * Putting it on the DTO would push it onto the sync wire and the Angular model for the sake
+     * of one consumer. The class-level {@code @Transactional} is what makes the lazy
+     * package → lotos walk possible; a caller on another thread must go through this method
+     * rather than touching the association itself.
+     */
+    public List<Integer> getLotoBoxNumbers(Long safeWorkId) {
+        if (safeWorkId == null) return List.of();
+        return safeWorkRepo.findById(safeWorkId)
+                .map(SafeWork::getDailyPermitPackage)
+                .map(pkg -> pkg.getLotos().stream()
+                        .map(Loto::getBoxNumber)
+                        .filter(box -> box != null && box > 0)
+                        .distinct()
+                        .sorted()
+                        .toList())
+                .orElseGet(List::of);
     }
 }

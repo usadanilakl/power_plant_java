@@ -301,6 +301,11 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, authGuard, plantGuard]
     },
     {
+      path: 'maximo/wo-questions',
+      loadComponent: () => import('./features/maximo/maximo-wo-questions-page.component').then(m => m.MaximoWoQuestionsPageComponent),
+      canActivate: [standaloneGuard, authGuard, plantGuard]
+    },
+    {
       path: 'rounds',
       loadComponent: () => import('./features/rounds/rounds-list.component').then(m => m.RoundsListComponent),
       canActivate: [standaloneGuard, authGuard, plantGuard]

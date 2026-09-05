@@ -149,6 +149,44 @@ public class WorkRequestController {
         }
     }
 
+    /**
+     * Records the operator's area / equipment / scope decision for this request. Send only the
+     * {@code operator*} fields; a blank string clears one back to the requester's value, an
+     * absent one leaves it alone.
+     *
+     * <p>Deliberately not part of {@code PUT /{id}}: that pushes to SharePoint, and the override
+     * is a local processing decision about a request SharePoint already holds — round-tripping it
+     * there would either need new columns or quietly rewrite the requester's own fields.
+     */
+    @PutMapping("/{id}/operator-override")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> setOperatorOverride(
+            @PathVariable Long id,
+            @RequestBody NgWorkRequestDto override,
+            java.security.Principal principal) {
+        try {
+            String by = principal != null ? principal.getName() : "unknown";
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    workRequestService.setOperatorOverride(id, override, by),
+                    "Work request area / equipment / scope set for permit generation."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to set override: " + e.getMessage()));
+        }
+    }
+
+    /** Drops the override so generation falls back to what the requester submitted. */
+    @DeleteMapping("/{id}/operator-override")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> clearOperatorOverride(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    workRequestService.clearOperatorOverride(id),
+                    "Override cleared — permits will use the submitted values."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to clear override: " + e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<String>> delete(@PathVariable Long id) {
         try {

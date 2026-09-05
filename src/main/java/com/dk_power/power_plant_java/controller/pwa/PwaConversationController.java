@@ -56,7 +56,7 @@ public class PwaConversationController {
 
         try {
             // PWA: verify user is participant (initiator or responder) — not just any authenticated user
-            if (!conversationService.isUserParticipant(id, user.getId())) {
+            if (!conversationService.canAccessForPwa(id, user.getId())) {
                 return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
             }
             List<MessageDto> messages = messageService.getMessagesForConversation(id);
@@ -105,7 +105,7 @@ public class PwaConversationController {
         if (user == null) return unauthorized();
 
         try {
-            if (!conversationService.isUserParticipant(id, user.getId())) {
+            if (!conversationService.canAccessForPwa(id, user.getId())) {
                 return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
             }
 
@@ -136,7 +136,7 @@ public class PwaConversationController {
         if (user == null) return unauthorized();
 
         try {
-            if (!conversationService.isUserParticipant(id, user.getId())) {
+            if (!conversationService.canAccessForPwa(id, user.getId())) {
                 return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
             }
             conversationService.markRead(id);
@@ -176,7 +176,12 @@ public class PwaConversationController {
         try {
             // PWA: only return conversations where THIS user is initiator or responder
             // (not open conversations visible to all operators — those are desktop-only)
-            List<ConversationDto> conversations = conversationService.getConversationsForEntityStrictUser(entityType, entityId, user.getId());
+            // WO Q&A threads are INCLUSIVE (visible to everyone who can see the WO); WR/other threads stay STRICT
+            // (participant-only) to prevent cross-contractor enumeration.
+            List<ConversationDto> conversations =
+                NgConversationService.WORK_ORDER_ENTITY_TYPE.equals(entityType)
+                    ? conversationService.getConversationsForEntityInclusiveUser(entityType, entityId, user.getId())
+                    : conversationService.getConversationsForEntityStrictUser(entityType, entityId, user.getId());
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(conversations, "Conversations retrieved"));
@@ -190,6 +195,37 @@ public class PwaConversationController {
      * Start a conversation about a Work Request using sharepointId (which the PWA has).
      * Server resolves the WR entity ID. No specific responder — any operator can see and reply.
      */
+    /** Active users {id, name} for the WO Q&A directed-recipients picker (plant-accessible). */
+    @GetMapping("/directable-users")
+    public ResponseEntity<?> getDirectableUsers() {
+        User user = getCurrentUser();
+        if (user == null) return unauthorized();
+        try {
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(conversationService.getDirectableUsers(), "Directable users retrieved"));
+        } catch (Exception e) {
+            log.error("[PWA Conversations] Failed to get directable users", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** The WO Q&A inbox: all OPEN Maximo-WO conversations (inclusive), newest first, each flagged directedToMe. */
+    @GetMapping("/wo-open")
+    public ResponseEntity<?> getOpenWorkOrderQuestions() {
+        User user = getCurrentUser();
+        if (user == null) return unauthorized();
+        try {
+            List<ConversationDto> list = conversationService.getOpenWorkOrderQuestions(user.getId());
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(list, "Open WO questions retrieved"));
+        } catch (Exception e) {
+            log.error("[PWA Conversations] Failed to get open WO questions", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     @PostMapping("/start-from-wr")
     public ResponseEntity<?> startConversationFromWorkRequest(@RequestBody Map<String, String> body) {
         User user = getCurrentUser();

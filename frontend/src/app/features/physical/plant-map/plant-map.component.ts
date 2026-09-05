@@ -38,6 +38,10 @@ import {
   PlantMapTopologyApiService, PlantMapTopologyConnection, PlantMapTopologyTerminal,
 } from './services/plant-map-topology-api.service';
 
+/** Canvas zoom bounds. Max raised to 8× so tightly-packed pipe ends/fittings can be separated enough to grab. */
+const MIN_ZOOM = 0.15;
+const MAX_ZOOM = 8;
+
 /** One child of a nested container (in the container's OWN diagram coords) — for recursive zoom-nesting.
  *  For a LEVELED container, children from ALL levels are composited (view-from-top): `floor` = its level index,
  *  `dim` = it's beneath the top level (shown faint so the top deck reads on top and lower decks peek out). */
@@ -160,7 +164,12 @@ type Drag =
   | { kind: 'pipeMove'; pipeId: string; startClientX: number; startClientY: number; moved: boolean;
       points: { x: number; y: number }[]; fittings: PipeFitting[]; taps: PipeTap[]; pinStart: boolean; pinEnd: boolean }
   | { kind: 'pipeVtx'; pipeId: string; index: number }
+  | { kind: 'pipeSeg'; pipeId: string; index: number; startClientX: number; startClientY: number;
+      /** Snapshot of the route at grab time — the delta is applied from here so snap can't drift. A terminal end
+       *  that is topology-connected is pinned, so the section leans about it instead of tearing the connection. */
+      basePoints: { x: number; y: number }[]; pinStart: boolean; pinEnd: boolean }
   | { kind: 'equipmentPort'; boxLocalId: number; portId: string }
+  | { kind: 'boundaryPort'; portId: string }
   | { kind: 'bgMove'; startClientX: number; startClientY: number; x: number; y: number }
   | { kind: 'bgResize'; startClientX: number; startClientY: number; scaleX: number; scaleY: number };
 
@@ -229,6 +238,18 @@ export class PlantMapComponent implements OnDestroy {
   canvasPulseNodeId = signal<number | null>(null);
   private canvasPulseTimer: any = null;
 
+  // ── flow highlight color (a per-device display preference; the animated ▶ Flow overlay) ──
+  private readonly FLOW_COLOR_KEY = 'plantMap.flowColor';
+  flowColor = signal<string>(this.readFlowColor());
+  private readFlowColor(): string {
+    try { return localStorage.getItem(this.FLOW_COLOR_KEY) || '#eaf6ff'; } catch { return '#eaf6ff'; }
+  }
+  setFlowColor(color: string) {
+    this.flowColor.set(color || '#eaf6ff');
+    try { localStorage.setItem(this.FLOW_COLOR_KEY, this.flowColor()); } catch { /* private mode — keep in-memory */ }
+  }
+  trackPortById(_index: number, port: { id: string }): string { return port.id; }
+
   readonly typeOptions = PO_TYPE_OPTIONS;
   readonly apiBase = environment.baseApiUrl;
   readonly color = poColor;
@@ -261,6 +282,8 @@ export class PlantMapComponent implements OnDestroy {
   private drag: Drag | null = null;
   rubber = signal<{ x: number; y: number; w: number; h: number } | null>(null);
   portPlacementBoxLocalId = signal<number | null>(null);
+  /** Armed to drop the NEXT canvas click onto this node's boundary as a connector (edited from inside the object). */
+  portPlacementBoundary = signal(false);
   selectedEquipmentPort = signal<{ objectId: number; portId: string; boxLocalId?: number } | null>(null);
 
   // ── inspector: edit fields + documents ──
@@ -301,7 +324,14 @@ export class PlantMapComponent implements OnDestroy {
 
   /** Natural size of the loaded reference image (so the grid working area can grow to contain it). */
   bgSize = signal<{ w: number; h: number } | null>(null);
-  onBgLoad(ev: Event) { const img = ev.target as HTMLImageElement; this.bgSize.set({ w: img.naturalWidth, h: img.naturalHeight }); }
+  /** Set when a fresh image is uploaded inside an object — the boundary is small vs a raw photo, so fit it to the
+   *  boundary once its natural size is known (stops the user tracing far outside the frame). */
+  private pendingBgFit = false;
+  onBgLoad(ev: Event) {
+    const img = ev.target as HTMLImageElement;
+    this.bgSize.set({ w: img.naturalWidth, h: img.naturalHeight });
+    if (this.pendingBgFit) { this.pendingBgFit = false; if (this.st.boundary()) this.fitBackground('contain'); }
+  }
   backgroundAdjustMode = signal(false);
   backgroundFrame = computed(() => {
     const size = this.bgSize();
@@ -473,6 +503,84 @@ export class PlantMapComponent implements OnDestroy {
     };
   }
 
+  /** Keep a box rect inside the boundary (when one exists). Size is capped to the boundary; position is pushed
+   *  back in. No-op at the root (no boundary) so the top-level canvas stays a free workspace. */
+  private clampRectToBoundary(x: number, y: number, w: number, h: number): { x: number; y: number; w: number; h: number } {
+    const bd = this.st.boundary();
+    if (!bd) return { x, y, w, h };
+    const cw = Math.min(w, bd.w), ch = Math.min(h, bd.h);
+    return {
+      x: Math.max(bd.x, Math.min(x, bd.x + bd.w - cw)),
+      y: Math.max(bd.y, Math.min(y, bd.y + bd.h - ch)),
+      w: cw, h: ch,
+    };
+  }
+
+  /** Keep a free pipe point inside the boundary (when one exists). Attachment/contact points are exempt — they
+   *  land on a connector or an existing pipe, including boundary connectors that legitimately sit on the edge. */
+  private clampPointToBoundary(pt: { x: number; y: number }): { x: number; y: number } {
+    const bd = this.st.boundary();
+    if (!bd) return pt;
+    return { x: Math.max(bd.x, Math.min(pt.x, bd.x + bd.w)), y: Math.max(bd.y, Math.min(pt.y, bd.y + bd.h)) };
+  }
+
+  canFitToBoundary = computed(() => !!this.st.boundary()
+    && (this.st.boxes().length > 0 || this.pipeGeos().some(p => p.points.length) || this.st.backgroundUrl() != null));
+
+  /**
+   * Shrink-and-relayout EVERYTHING on this canvas — boxes, pipes (with their fittings/taps), legacy edges, and the
+   * reference image — by ONE uniform transform so it all fits inside this object's boundary. A single affine
+   * (scale S, translate T) preserves every coincidence: box ports, fittings/taps on their pipe, pipe ends on ports —
+   * so nothing detaches. Rescues a layout that spilled outside the frame (which otherwise overflows the object's box
+   * up in the parent view). Only ever shrinks; if it already fits it just recenters.
+   */
+  fitContentToBoundary() {
+    const boundary = this.st.boundary();
+    if (!boundary) return;
+    const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+
+    const xs: number[] = [], ys: number[] = [];
+    const add = (x: number, y: number) => { xs.push(x); ys.push(y); };
+    for (const b of this.st.boxes()) { add(b.x, b.y); add(b.x + b.width, b.y + b.height); }
+    const pipes = this.pipeGeos().filter(p => p.parentId === parent);
+    for (const p of pipes) {
+      for (const pt of p.points) add(pt.x, pt.y);
+      for (const f of (p.fittings ?? [])) add(f.at.x, f.at.y);
+      for (const t of (p.taps ?? [])) add(t.at.x, t.at.y);
+    }
+    for (const e of this.st.edges()) for (const wp of (e.waypoints ?? [])) add(wp.x, wp.y);
+    const bg = this.st.backgroundUrl() ? this.backgroundFrame() : null;
+    if (bg) { add(bg.x, bg.y); add(bg.x + bg.w, bg.y + bg.h); }
+    if (!xs.length) return;
+
+    const minX = Math.min(...xs), minY = Math.min(...ys);
+    const bboxW = Math.max(1, Math.max(...xs) - minX), bboxH = Math.max(1, Math.max(...ys) - minY);
+    const pad = 18;
+    const targetW = Math.max(1, boundary.w - pad * 2), targetH = Math.max(1, boundary.h - pad * 2);
+    const scale = Math.min(targetW / bboxW, targetH / bboxH, 1); // uniform, shrink-only
+    const tx = boundary.x + pad + (targetW - bboxW * scale) / 2 - minX * scale;
+    const ty = boundary.y + pad + (targetH - bboxH * scale) / 2 - minY * scale;
+    const map = (pt: { x: number; y: number }) => ({ x: tx + scale * pt.x, y: ty + scale * pt.y });
+
+    this.st.boxes.update(list => list.map(b => ({
+      ...b, x: tx + scale * b.x, y: ty + scale * b.y,
+      width: Math.max(4, scale * b.width), height: Math.max(4, scale * b.height),
+    })));
+    this.pipeGeos.update(list => list.map(p => p.parentId !== parent ? p : {
+      ...p,
+      points: p.points.map(map),
+      fittings: (p.fittings ?? []).map(f => ({ ...f, at: map(f.at) })),
+      taps: (p.taps ?? []).map(t => ({ ...t, at: map(t.at) })),
+    }));
+    this.st.edges.update(list => list.map(e => e.waypoints?.length ? { ...e, waypoints: e.waypoints.map(map) } : e));
+    if (bg) {
+      const t = this.st.backgroundTransform();
+      this.st.setBackgroundTransform({ x: tx + scale * t.x, y: ty + scale * t.y, scaleX: scale * t.scaleX, scaleY: scale * t.scaleY });
+    }
+    this.savePipes(); // one full doSave persists boxes + edges + pipes + bg together
+    this.st.error.set(null);
+  }
+
   private readEquipmentPorts(svgPath?: string | null): EquipmentPort[] {
     let value: any;
     try { value = svgPath ? JSON.parse(svgPath) : null; } catch { return []; }
@@ -546,7 +654,11 @@ export class PlantMapComponent implements OnDestroy {
         this.resetView(); this.pipeDraft.set([]); this.pipeCursor.set(null); this.pipeExtension.set(null);
         this.spacePanning.set(false);
         this.backgroundAdjustMode.set(false); this.portPlacementBoxLocalId.set(null); this.selectedEquipmentPort.set(null);
-        this.pipeConnect.set(null); this.pipeConnectHover.set(null); this.pipeConnectBodyPreview.set(null);
+        // Keep a connect session whose SOURCE END is already picked, so you can drill to another section and finish
+        // the link there (cross-section connect). Drop unstarted / body-drafting sessions — those can't carry over.
+        const connect = this.pipeConnect();
+        if (!connect || connect.sourceEnd == null) this.pipeConnect.set(null);
+        this.pipeConnectHover.set(null); this.pipeConnectBodyPreview.set(null);
         // Drop any pipe/fitting selection so its inspector doesn't linger, stale, over an unrelated node's canvas.
         this.selectedPipeId.set(null); this.selectedFittingId.set(null); this.pipeFittingNode.set(null);
       });
@@ -749,7 +861,7 @@ export class PlantMapComponent implements OnDestroy {
     if (roots.length === 1) this.st.openNode(roots[0].id);
   }
 
-  navigate(id: number) { void this.st.navigate(id); }
+  navigate(id: number) { this.portPlacementBoundary.set(false); this.portPlacementBoxLocalId.set(null); void this.st.navigate(id); }
   canGoUp = computed(() => this.st.breadcrumb().length > 1);
   goUpOneLevel() {
     const path = this.st.breadcrumb();
@@ -975,6 +1087,22 @@ export class PlantMapComponent implements OnDestroy {
   private pipeDraftStartAttachment: EquipmentPortRef | undefined;
   private pipeDraftEndAttachment: EquipmentPortRef | undefined;
   selectedPipeId = signal<string | null>(null);
+  /** Multi-selected pipes (marquee) — highlighted and bulk-deletable alongside boxes. */
+  selectedPipeIds = signal<Set<string>>(new Set());
+  isPipeSelected(id: string): boolean { return this.selectedPipeId() === id || this.selectedPipeIds().has(id); }
+  private clearMultiPipeSelection() { if (this.selectedPipeIds().size) this.selectedPipeIds.set(new Set()); }
+  /** True when at least one point/segment of the path falls inside the rubber rect (marquee hit test). */
+  private pathHitsRect(points: { x: number; y: number }[], r: { x: number; y: number; w: number; h: number }): boolean {
+    const inside = (x: number, y: number) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    for (let i = 0; i < points.length; i++) {
+      if (inside(points[i].x, points[i].y)) return true;
+      if (i < points.length - 1) {
+        const a = points[i], b = points[i + 1];
+        for (let t = 0.2; t < 1; t += 0.2) if (inside(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y))) return true;
+      }
+    }
+    return false;
+  }
   pipeEditName = '';
   /** linkId whose connectors should pulse (set when you jump through a connector, so the counterpart is obvious). */
   highlightedLink = signal<string | null>(null);
@@ -1280,8 +1408,8 @@ export class PlantMapComponent implements OnDestroy {
     // An explicit equipment connector remains authoritative over grid and orthogonal snapping.
     if (attachment) np = { ...p };
     else if (contact) np = { ...contact.point };
-    else if (pts.length) np = this.snapPt(this.snapPipePoint(p, pts[pts.length - 1]));
-    else np = this.snapPt(p);
+    else if (pts.length) np = this.clampPointToBoundary(this.snapPt(this.snapPipePoint(p, pts[pts.length - 1])));
+    else np = this.clampPointToBoundary(this.snapPt(p));
     this.pipeDraft.set([...pts, np]);
   }
   private addPipeConnectElbow(ev: PointerEvent) {
@@ -1396,7 +1524,7 @@ export class PlantMapComponent implements OnDestroy {
       path: p.points,
       color: p.color || '#5b9bd5', width: p.width || 8, name: p.name || 'Pipe',
       start: p.points[0], end: p.points[p.points.length - 1],
-      mid: p.points[Math.floor(p.points.length / 2)], sel: p.id === this.selectedPipeId(),
+      mid: p.points[Math.floor(p.points.length / 2)], sel: this.isPipeSelected(p.id),
     }));
   });
   /** The in-progress draft polyline + the live guide segment to the cursor. */
@@ -1445,8 +1573,8 @@ export class PlantMapComponent implements OnDestroy {
     const selectedId = this.selectedPipeId();
     const pipe = selectedId ? this.visiblePipes().find(item => item.id === selectedId) : null;
     return pipe ? [
-      { key: `${pipe.id}-A`, label: 'A', point: pipe.start },
-      { key: `${pipe.id}-B`, label: 'B', point: pipe.end },
+      { key: `${pipe.id}-A`, label: 'A', role: 'a' as const, point: pipe.start },
+      { key: `${pipe.id}-B`, label: 'B', role: 'b' as const, point: pipe.end },
     ] : [];
   });
   hoveredVisiblePipe = computed(() => {
@@ -1478,22 +1606,25 @@ export class PlantMapComponent implements OnDestroy {
     const visible = this.visiblePipes();
     if (!session) return [];
     const source = visible.find(pipe => pipe.id === session.sourcePipeId);
-    if (!source) return [];
     if (!this.pipeConnectSourcePicked(session)) {
+      // still choosing the source end — that needs the source itself on-screen
+      if (!source) return [];
       return [
         { pipeId: source.id, end: 'start' as PipeEnd, point: source.start, role: 'source-choice' as const, name: source.name },
         { pipeId: source.id, end: 'end' as PipeEnd, point: source.end, role: 'source-choice' as const, name: source.name },
       ];
     }
+    // Source end already chosen — offer target ends on every visible pipe, EVEN IF the source itself is off-canvas
+    // (you picked it in a child, then drilled up to the parent). This is what lets a link be made across sections.
     const handles: PipeConnectionEndpointHandle[] = [];
-    if (session.sourceEnd != null) handles.push({
+    if (source && session.sourceEnd != null) handles.push({
       pipeId: source.id, end: session.sourceEnd,
       point: session.sourceEnd === 'start' ? source.start : source.end,
       role: 'source-selected' as const, name: source.name,
     });
     // Every candidate end remains visible at a small, screen-sized radius. Hover only enlarges/emphasizes it.
     for (const pipe of visible) {
-      if (pipe.id === source.id) continue;
+      if (pipe.id === session.sourcePipeId) continue;
       handles.push({ pipeId: pipe.id, end: 'start', point: pipe.start, role: 'target', name: pipe.name });
       handles.push({ pipeId: pipe.id, end: 'end', point: pipe.end, role: 'target', name: pipe.name });
     }
@@ -1632,27 +1763,51 @@ export class PlantMapComponent implements OnDestroy {
   });
 
   /** Off-page connectors are navigation objects derived only from cross-section topology, never flow arrows. */
-  pipeConnectors = computed<{ pipeId: string; linkId: string; x: number; y: number; target: number | null; label: string; dir: 'in' | 'out'; angle: number }[]>(() => {
+  /** Off-page-style tags at a connected pipe end that the eye can't follow to its partner: a partner in ANOTHER
+   *  section (double-click jumps) OR one on THIS canvas but across a visible gap (single-click flashes both). Ends
+   *  that physically touch their partner are a plain junction dot instead (see pipeJunctions). */
+  pipeConnectors = computed<{ pipeId: string; linkId: string; x: number; y: number; target: number | null; label: string; dir: 'in' | 'out'; angle: number; sameCanvas: boolean }[]>(() => {
     const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
     if (parent == null) return [];
     const deg = (dx: number, dy: number) => Math.atan2(dy, dx) * 180 / Math.PI;
     const all = this.pipeGeos();
-    const out: { pipeId: string; linkId: string; x: number; y: number; target: number | null; label: string; dir: 'in' | 'out'; angle: number }[] = [];
+    const byNode = new Map(all.filter(pipe => pipe.nodeId != null).map(pipe => [pipe.nodeId!, pipe]));
+    const GAP = 10; // ends farther apart than this are a "gap" worth a connector tag; closer is a touching junction
+    const out: { pipeId: string; linkId: string; x: number; y: number; target: number | null; label: string; dir: 'in' | 'out'; angle: number; sameCanvas: boolean }[] = [];
     for (const p of all) {
       if (p.parentId !== parent || p.points.length < 2) continue;
       for (const pipeEnd of ['start', 'end'] as PipeEnd[]) {
         const connection = this.connectionForPipeEnd(p, pipeEnd);
-        if (!connection || (connection.kind !== 'CONTINUATION'
-          && !connection.terminals.some(terminal => terminal.sectionId !== parent))) continue;
+        if (!connection) continue;
         const point = pipeEnd === 'start' ? p.points[0] : p.points[p.points.length - 1];
         const previous = pipeEnd === 'start' ? p.points[1] : p.points[p.points.length - 2];
-        const counterpart = connection.terminals.find(terminal => terminal.sectionId !== parent);
-        const target = counterpart?.sectionId ?? null;
-        out.push({
-          pipeId: p.id, linkId: connection.connectionKey, x: point.x, y: point.y, target,
-          label: target != null ? this.nameOf(target) : 'Unresolved',
-          dir: 'out',
-          angle: deg(point.x - previous.x, point.y - previous.y),
+        const angle = deg(point.x - previous.x, point.y - previous.y);
+        const crossCounterpart = connection.terminals.find(terminal => terminal.sectionId !== parent);
+        if (crossCounterpart || connection.kind === 'CONTINUATION') {
+          // Partner lives in another section: an off-page connector; double-click jumps to it.
+          const target = crossCounterpart?.sectionId ?? null;
+          out.push({
+            pipeId: p.id, linkId: connection.connectionKey, x: point.x, y: point.y, target,
+            label: target != null ? this.nameOf(target) : 'Unresolved', dir: 'out', angle, sameCanvas: false,
+          });
+          continue;
+        }
+        // Partner(s) on THIS canvas: show a connector only when the ends don't touch (a visible gap). A same-point
+        // join stays a plain junction dot. Both gapped ends carry the same linkId, so flashing one flashes both.
+        const partners = connection.terminals.filter(terminal =>
+          !(terminal.pipeNodeId === p.nodeId && terminal.end === this.topologyEnd(pipeEnd)));
+        let partnerName: string | null = null;
+        for (const partner of partners) {
+          const partnerPipe = byNode.get(partner.pipeNodeId);
+          const partnerPoint = partnerPipe ? this.topologyTerminalPoint(partnerPipe, partner.end) : null;
+          if (partnerPoint && Math.hypot(partnerPoint.x - point.x, partnerPoint.y - point.y) > GAP) {
+            partnerName = partnerPipe?.name || 'Pipe';
+            break;
+          }
+        }
+        if (partnerName != null) out.push({
+          pipeId: p.id, linkId: connection.connectionKey, x: point.x, y: point.y, target: null,
+          label: partnerName, dir: 'in', angle, sameCanvas: true,
         });
       }
     }
@@ -1827,6 +1982,7 @@ export class PlantMapComponent implements OnDestroy {
       this.flowBoundaryPorts(),
       fitting => this.fittingByKey.get(fitting.type)?.cat === 'valve',
       this.equipmentPortNetworks(),
+      fitting => this.valveGateDir(fitting),
     );
   });
   flowOf(id: string) { return this.flowResult().get(id) ?? null; }
@@ -1845,14 +2001,23 @@ export class PlantMapComponent implements OnDestroy {
     this.highlightTimer = setTimeout(() => this.highlightedLink.set(null), 4500);
     this.navigate(c.target);
   }
-  onPipeConnectorDown(ev: PointerEvent, pipeId: string) {
+  onPipeConnectorDown(ev: PointerEvent, connector: { pipeId: string; linkId: string }) {
     if (this.startMiddlePan(ev)) return;
     ev.stopPropagation();
-    this.selectPipe(pipeId);
+    this.flashLink(connector.linkId); // pulse this tag AND its partner(s) sharing the link, so the gap is obvious
+    this.selectPipe(connector.pipeId);
+  }
+
+  /** Pulse every connector tag that shares this link (its partner across a gap or in another section). */
+  private flashLink(linkId: string) {
+    this.highlightedLink.set(linkId);
+    if (this.highlightTimer) clearTimeout(this.highlightTimer);
+    this.highlightTimer = setTimeout(() => this.highlightedLink.set(null), 3000);
   }
   selectPipe(id: string | null) {
     const changed = this.selectedPipeId() !== id;
     this.selectedPipeId.set(id);
+    this.clearMultiPipeSelection(); // a single pick replaces any marquee multi-selection
     if (id != null) this.selectedEquipmentPort.set(null);
     if (changed || id == null) this.pipeEdit.set(false);
     if (id != null) { this.selectedFittingId.set(null); this.st.selectBox(null); this.st.selectedNestedNode.set(null); }
@@ -2018,12 +2183,32 @@ export class PlantMapComponent implements OnDestroy {
     ev.stopPropagation();
     const session = this.pipeConnect();
     if (!session || this.connectionBusy()) return;
-    if (handle.role === 'source-choice') {
-      this.pipeConnect.set({ ...session, sourceEnd: handle.end });
+    // When several ends crowd one spot, the handle the browser delivered is just the top of the SVG stack — not
+    // necessarily the one under the cursor. Re-pick the CLOSEST same-role end to the actual click so the pointer
+    // reliably hits the end you aimed at (helps most when pipes run close together).
+    const target = this.nearestEndpointHandle(this.contentPoint(ev), handle.role) ?? handle;
+    if (target.role === 'source-choice') {
+      this.pipeConnect.set({ ...session, sourceEnd: target.end });
       this.pipeConnectBodyPreview.set(null);
       return;
     }
-    if (handle.role === 'target') this.proposePipeConnectTarget(handle.pipeId, handle.end);
+    if (target.role === 'target') this.proposePipeConnectTarget(target.pipeId, target.end);
+  }
+
+  /** The endpoint handle of the given role nearest to `point` (within a generous, zoom-aware radius). Resolves
+   *  overlapping A/B handles by geometry instead of paint order, so a click lands on the intended end. */
+  private nearestEndpointHandle(
+    point: { x: number; y: number },
+    role: PipeConnectionEndpointHandle['role'],
+  ): PipeConnectionEndpointHandle | null {
+    let best: PipeConnectionEndpointHandle | null = null;
+    let bestDistance = (18 / this.zoom()) ** 2;
+    for (const h of this.connectionEndpointHandles()) {
+      if (h.role !== role) continue;
+      const distance = (h.point.x - point.x) ** 2 + (h.point.y - point.y) ** 2;
+      if (distance <= bestDistance) { bestDistance = distance; best = h; }
+    }
+    return best;
   }
 
   private nearestVisiblePipeEnd(
@@ -2294,18 +2479,17 @@ export class PlantMapComponent implements OnDestroy {
           },
         }
       : pending;
-    if (target.parentId !== source.parentId) {
-      this.st.error.set('Open the section that owns the other pipe, then connect the local continuation there. Parent-to-child continuity is created automatically when a drawn route crosses the child boundary.');
-      return;
-    }
-    const bodyToBody = session!.sourceEnd == null && !!session!.sourcePoint
+    // Pipes in different sections (you picked a source end in a child, then drilled up to the parent) link across
+    // the boundary — a logical cross-section connection, never a drawn branch. Both ends then carry a jump connector.
+    const crossSection = target.parentId !== source.parentId;
+    const bodyToBody = !crossSection && session!.sourceEnd == null && !!session!.sourcePoint
       && resolvedPending.targetEnd == null && !!resolvedPending.targetPoint;
     const separatedBodies = bodyToBody
       && Math.hypot(
         session!.sourcePoint!.x - resolvedPending.targetPoint!.x,
         session!.sourcePoint!.y - resolvedPending.targetPoint!.y,
       ) > 3 / Math.max(0.2, this.zoom());
-    const targetEndAlreadyConnected = session!.sourceEnd == null && !!session!.sourcePoint
+    const targetEndAlreadyConnected = !crossSection && session!.sourceEnd == null && !!session!.sourcePoint
       && resolvedPending.targetEnd != null
       && this.isPipeEndConnected(target, resolvedPending.targetEnd)
       && !!resolvedPending.targetPoint
@@ -2315,7 +2499,7 @@ export class PlantMapComponent implements OnDestroy {
       ) > 3 / Math.max(0.2, this.zoom());
     const saved = separatedBodies || targetEndAlreadyConnected
       ? await this.createConnectingBranch(session!, resolvedPending)
-      : await this.savePipeConnection(session!, resolvedPending);
+      : await this.savePipeConnection(session!, resolvedPending, /* moveEndpoints */ false);
     if (saved) this.cancelPipeConnect();
   }
 
@@ -2668,6 +2852,9 @@ export class PlantMapComponent implements OnDestroy {
   private async savePipeConnection(
     session: PipeConnectSession,
     pending: PipeConnectPending,
+    // false ⇒ create the topology link but NEVER reposition geometry (explicit Connect — pipes stay where they are
+    // and read as a linked pair via connectors). true ⇒ snap the end to its contact (auto-connect of touching ends).
+    moveEndpoints = true,
   ): Promise<boolean> {
     const selected = this.pipeGeos().find(pipe => pipe.id === session.sourcePipeId);
     const target = this.pipeGeos().find(pipe => pipe.id === pending.targetPipeId);
@@ -2715,9 +2902,17 @@ export class PlantMapComponent implements OnDestroy {
       if (result?.responseData) this.applyTopologyConnection(result.responseData);
       // Same-section endpoints share coordinates. For a current-canvas endpoint attached to a nested body, the
       // tap remains child-local while the endpoint moves to the contact visible in the parent canvas.
-      if (selected.parentId === target.parentId && (session.sourceEnd != null || pending.targetEnd != null)) {
-        const targetPoint = pending.targetPoint
-          ?? (pending.targetEnd === 'start' ? target.points[0] : target.points[target.points.length - 1]);
+      const targetPoint = pending.targetPoint
+        ?? (pending.targetEnd === 'start' ? target.points[0] : target.points[target.points.length - 1]);
+      const sourcePoint = session.sourceEnd != null
+        ? (session.sourceEnd === 'start' ? selected.points[0] : selected.points[selected.points.length - 1])
+        : session.sourcePoint ?? null;
+      // Only snap the two ends together when they're ALREADY near each other. Far-apart ends stay exactly where
+      // they are and read as a linked pair via the amber gap connectors — connecting must never yank one pipe
+      // across the canvas to touch the other.
+      const gap = sourcePoint && targetPoint
+        ? Math.hypot(sourcePoint.x - targetPoint.x, sourcePoint.y - targetPoint.y) : Infinity;
+      if (moveEndpoints && selected.parentId === target.parentId && (session.sourceEnd != null || pending.targetEnd != null) && gap <= 26) {
         this.pipeGeos.update(list => list.map(pipe => {
           const moveSourceEnd = session.sourceEnd != null && pipe.id === selected.id;
           const moveTargetEnd = session.sourceEnd == null && pending.targetEnd != null && pipe.id === target.id;
@@ -2733,7 +2928,9 @@ export class PlantMapComponent implements OnDestroy {
           return { ...pipe, points };
         }));
         await this.persistChangedPipes(new Set([session.sourceEnd != null ? selected.id : target.id]));
-      } else if (session.sourceEnd != null && pending.targetDisplayPoint) {
+      } else if (selected.parentId === target.parentId && (session.sourceEnd != null || pending.targetEnd != null)) {
+        // gapped same-section connect: geometry untouched — the link stands and gap connectors mark both ends
+      } else if (moveEndpoints && session.sourceEnd != null && pending.targetDisplayPoint) {
         const currentParent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
         if (selected.parentId === currentParent) {
           this.pipeGeos.update(list => list.map(pipe => {
@@ -2816,27 +3013,110 @@ export class PlantMapComponent implements OnDestroy {
     this.pipeEdit.update(value => !value);
   }
 
-  /** Route bends remain draggable; either endpoint starts a normal multi-click extension of this same route. */
+  /** Route bends remain draggable; either endpoint starts a normal multi-click extension of this same route.
+   *  `segs` are the straight sections between bends — drag one to move the whole section (its elbows follow). */
   pipeEditHandles = computed(() => {
-    const empty = { verts: [] as { x: number; y: number; i: number; endpoint: boolean }[], mids: [] as { x: number; y: number; i: number }[] };
+    const empty = {
+      verts: [] as { x: number; y: number; i: number; endpoint: boolean }[],
+      mids: [] as { x: number; y: number; i: number }[],
+      segs: [] as { i: number; x1: number; y1: number; x2: number; y2: number }[],
+    };
     if (!this.pipeEdit() || !this.selectedPipeOnCanvas()) return empty;
     const p = this.selectedPipe(); if (!p) return empty;
     const verts = p.points.map((pt, i) => ({ x: pt.x, y: pt.y, i, endpoint: i === 0 || i === p.points.length - 1 }));
     const mids: { x: number; y: number; i: number }[] = [];
-    for (let i = 0; i < p.points.length - 1; i++)
+    const segs: { i: number; x1: number; y1: number; x2: number; y2: number }[] = [];
+    for (let i = 0; i < p.points.length - 1; i++) {
       mids.push({ x: (p.points[i].x + p.points[i + 1].x) / 2, y: (p.points[i].y + p.points[i + 1].y) / 2, i });
-    return { verts, mids };
+      segs.push({ i, x1: p.points[i].x, y1: p.points[i].y, x2: p.points[i + 1].x, y2: p.points[i + 1].y });
+    }
+    return { verts, mids, segs };
   });
+
+  /** Grab a whole straight section: translate its two bends together (adjacent sections stretch/lean to follow).
+   *  A connected terminal end stays pinned, so the section pivots about it rather than tearing the connection. */
+  onPipeSegDown(ev: PointerEvent, segIndex: number) {
+    if (this.startMiddlePan(ev)) return;
+    if (ev.button !== 0) return; // left-drag moves the section; right-click is handled as "delete section"
+    ev.preventDefault(); ev.stopPropagation();
+    const p = this.selectedPipe(); if (!p) return;
+    const lastIndex = p.points.length - 1;
+    this.drag = {
+      kind: 'pipeSeg', pipeId: p.id, index: segIndex,
+      startClientX: ev.clientX, startClientY: ev.clientY,
+      basePoints: p.points.map(pt => ({ ...pt })),
+      pinStart: segIndex === 0 && this.isPipeEndConnected(p, 'start'),
+      pinEnd: segIndex + 1 === lastIndex && this.isPipeEndConnected(p, 'end'),
+    };
+  }
+
+  /** Right-click a straight section to remove it: an end section is trimmed away; a middle section collapses so its
+   *  two neighbors meet. Won't trim a connected A/B end (disconnect it first) or reduce a pipe below one segment. */
+  onPipeSegContext(ev: MouseEvent, segIndex: number) {
+    ev.preventDefault(); ev.stopPropagation();
+    const p = this.selectedPipe();
+    if (!p || p.points.length <= 2) return;
+    const lastSeg = p.points.length - 2;
+    if (segIndex === 0 && this.isPipeEndConnected(p, 'start')) { this.st.error.set('Disconnect end A before deleting its section.'); return; }
+    if (segIndex === lastSeg && this.isPipeEndConnected(p, 'end')) { this.st.error.set('Disconnect end B before deleting its section.'); return; }
+    this.pipeGeos.update(list => list.map(pp => {
+      if (pp.id !== p.id) return pp;
+      const points = [...pp.points];
+      if (segIndex === 0) points.splice(0, 1);                       // trim the A-end section
+      else if (segIndex === lastSeg) points.splice(points.length - 1, 1); // trim the B-end section
+      else points.splice(segIndex, 2, {                             // middle: collapse to the section's midpoint
+        x: (points[segIndex].x + points[segIndex + 1].x) / 2,
+        y: (points[segIndex].y + points[segIndex + 1].y) / 2,
+      });
+      const taps = (pp.taps ?? []).map(tap => ({ ...tap, at: this.nearestOnPipe(points, tap.at) ?? tap.at }));
+      return { ...pp, points, taps };
+    }));
+    void this.persistChangedPipes(this.syncMovedPipeBranches(p.id));
+  }
+
+  private movePipeSegment(drag: Extract<Drag, { kind: 'pipeSeg' }>, dxContent: number, dyContent: number) {
+    const a = drag.index, b = drag.index + 1;
+    this.pipeGeos.update(list => list.map(item => {
+      if (item.id !== drag.pipeId) return item;
+      const points = drag.basePoints.map((pt, i) => {
+        if (i !== a && i !== b) return { ...pt };
+        if ((i === a && drag.pinStart) || (i === b && drag.pinEnd)) return { ...pt };
+        return this.clampPointToBoundary(this.snapPt({ x: pt.x + dxContent, y: pt.y + dyContent }));
+      });
+      const taps = (item.taps ?? []).map(tap => ({ ...tap, at: this.nearestOnPipe(points, tap.at) ?? tap.at }));
+      return { ...item, points, taps };
+    }));
+  }
 
   onPipeVtxDown(ev: PointerEvent, index: number) {
     if (this.startMiddlePan(ev)) return;
+    if (ev.button !== 0) return;
     ev.preventDefault(); ev.stopPropagation();
     const p = this.selectedPipe(); if (!p) return;
-    if (index === 0 || index === p.points.length - 1) {
-      this.beginPipeExtension(p, index === 0 ? 'start' : 'end');
+    // Dragging ANY vertex — bends AND the A/B ends — MOVES it (extend / shrink / lean the adjacent section). A
+    // connected end can't be dragged freely (it would tear the link); disconnect it first, or use Extend to draw on.
+    const end: PipeEnd | null = index === 0 ? 'start' : index === p.points.length - 1 ? 'end' : null;
+    if (end && this.isPipeEndConnected(p, end)) {
+      this.st.error.set(`End ${this.topologyEnd(end)} is connected — disconnect it before moving it.`);
       return;
     }
     this.drag = { kind: 'pipeVtx', pipeId: p.id, index };
+  }
+
+  /** Double-click an A/B end to keep DRAWING from it (add sections). Interior bends double-click to delete. */
+  onPipeVtxDblClick(index: number, ev?: Event) {
+    const p = this.selectedPipe(); if (!p) return;
+    if (index === 0 || index === p.points.length - 1) {
+      ev?.stopPropagation();
+      this.beginPipeExtension(p, index === 0 ? 'start' : 'end');
+    } else {
+      this.removePipeVtx(index, ev);
+    }
+  }
+  /** Continue drawing from an end (the pipe inspector's Extend A / Extend B buttons — "add section"). */
+  extendSelectedPipeEnd(end: PipeEnd) {
+    const p = this.selectedPipe();
+    if (p) { this.pipeEdit.set(true); this.beginPipeExtension(p, end); }
   }
 
   private beginPipeExtension(pipe: PipeGeo, end: PipeEnd) {
@@ -2864,7 +3144,7 @@ export class PlantMapComponent implements OnDestroy {
     if (!pipe) return;
     const endpoint = index === 0 || index === pipe.points.length - 1;
     const nearby = endpoint ? this.nearestEquipmentPort(pt) : null;
-    const q0 = nearby ? { x: nearby.x, y: nearby.y } : this.snapPt(pt);
+    const q0 = nearby ? { x: nearby.x, y: nearby.y } : this.clampPointToBoundary(this.snapPt(pt));
     this.pipeGeos.update(list => list.map(item => {
       if (item.id !== pipeId) return item;
       const points = item.points.map((point, pointIndex) => pointIndex === index ? q0 : point);
@@ -2982,9 +3262,15 @@ export class PlantMapComponent implements OnDestroy {
     return {
       id: f.id, nodeId: f.nodeId, x, y, cat: g?.cat ?? 'line',
       path: g?.cat === 'valve' ? this.BOWTIE : (g?.path ?? ''),
-      actuator: g?.cat === 'valve' ? (g?.code ?? '') : '', code: g?.cat === 'instrument' ? (g?.code ?? '') : '',
+      // A one-way valve shows its permitted along-pipe direction as a chevron: › = A→B, ‹ = B→A. A both-way
+      // valve keeps its type code (M/A/C/R). Any valve can be made directional, not just the check type.
+      actuator: g?.cat === 'valve'
+        ? (this.valveGateDir(f) === 'forward' ? '›' : this.valveGateDir(f) === 'reverse' ? '‹' : (g?.code ?? ''))
+        : '',
+      code: g?.cat === 'instrument' ? (g?.code ?? '') : '',
       color: g?.color ?? '#ccc', tag: f.tag ?? '', tag2: f.tag2 ?? '', double: !!f.double,
       sel: f.id === this.selectedFittingId(),
+      size: this.fittingSize(f), // per-fitting symbol scale (item: change valve size)
       isValve: g?.cat === 'valve', closed: !!f.closed, // valve state for the flow sim
     };
   }
@@ -3047,6 +3333,22 @@ export class PlantMapComponent implements OnDestroy {
   }
   saveFitting() { this.patchFitting({ name: this.fittingEditName.trim(), tag: this.fittingEditTag.trim(), tag2: this.fittingEditTag2.trim(), desc: this.fittingEditDesc.trim() }); }
   toggleFittingDouble(on: boolean) { this.patchFitting({ double: on }); }
+  /** Symbol scale for a fitting (1 = default). Clamped so it never shrinks to nothing or swallows the canvas. */
+  fittingSize(f: PipeFitting): number { return Math.max(0.4, Math.min(4, f.size ?? 1)); }
+  setFittingSize(size: number) { this.patchFitting({ size: Math.max(0.4, Math.min(4, size || 1)) }); }
+  /** The permitted flow direction of a valve (any valve can be one-way; a check valve defaults to A→B). */
+  valveFlowDir(f?: PipeFitting): 'forward' | 'reverse' | 'both' {
+    const fitting = f ?? this.selectedFitting()?.fitting;
+    return fitting?.checkFlow ?? (fitting?.type === 'check' ? 'forward' : 'both');
+  }
+  setValveFlow(dir: 'forward' | 'reverse' | 'both') { this.patchFitting({ checkFlow: dir }); }
+  /** A check valve is automatic — it has no manual open/closed state (unlike a gate/isolation valve). */
+  isCheckValve(): boolean { return this.selectedFitting()?.fitting.type === 'check'; }
+  /** The one direction a valve permits along the pipe, or null when it lets flow pass both ways. */
+  valveGateDir(f: PipeFitting): 'forward' | 'reverse' | null {
+    const dir = this.valveFlowDir(f);
+    return dir === 'both' ? null : dir;
+  }
   async deleteFitting(id: string) {
     let nodeId: number | undefined; let owner: PipeGeo | undefined;
     for (const p of this.pipeGeos()) { const f = (p.fittings ?? []).find(x => x.id === id); if (f) { nodeId = f.nodeId; owner = p; break; } }
@@ -3300,19 +3602,22 @@ export class PlantMapComponent implements OnDestroy {
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a') {
       ev.preventDefault(); this.st.setSelection(this.st.boxes().map(b => b.localId)); return;
     }
-    if (!sel.length) return;
+    // Delete removes the whole selection — boxes AND pipes (marquee or single), else a selected fitting.
     if (ev.key === 'Delete' || ev.key === 'Backspace') {
-      ev.preventDefault();
-      void this.removeBoxesCleanly([...sel]);
-      return;
+      const pipeIds = [...new Set([...(this.selectedPipeId() ? [this.selectedPipeId()!] : []), ...this.selectedPipeIds()])];
+      if (sel.length || pipeIds.length) { ev.preventDefault(); void this.deleteSelection([...sel], pipeIds); return; }
+      const fittingId = this.selectedFittingId();
+      if (fittingId && this.selectedFittingOnCanvas()) { ev.preventDefault(); void this.deleteFitting(fittingId); return; }
     }
+    if (!sel.length) return;
     const step = ev.shiftKey ? 10 : 1;
     const dx = ev.key === 'ArrowLeft' ? -step : ev.key === 'ArrowRight' ? step : 0;
     const dy = ev.key === 'ArrowUp' ? -step : ev.key === 'ArrowDown' ? step : 0;
     if (dx || dy) {
       ev.preventDefault();
       for (const b of this.st.selectedBoxes()) {
-        this.st.setBoxRect(b.localId, Math.max(0, b.x + dx), Math.max(0, b.y + dy), b.width, b.height);
+        const c = this.clampRectToBoundary(Math.max(0, b.x + dx), Math.max(0, b.y + dy), b.width, b.height);
+        this.st.setBoxRect(b.localId, c.x, c.y, b.width, b.height);
       }
     }
   }
@@ -3334,7 +3639,12 @@ export class PlantMapComponent implements OnDestroy {
     else this.st.placeChild(created.id);          // child: drop a box on the current canvas
   }
 
-  placeFromPalette(childId: number) { this.st.placeChild(childId); }
+  placeFromPalette(childId: number) {
+    const localId = this.st.placeChild(childId);
+    if (localId == null || !this.st.boundary()) return;
+    const box = this.st.boxes().find(b => b.localId === localId);
+    if (box) { const c = this.clampRectToBoundary(box.x, box.y, box.width, box.height); this.st.setBoxRect(localId, c.x, c.y, c.w, c.h); }
+  }
 
   /** Add a floor/level to the current node — it appears in the Levels switcher, NOT as a box on the canvas. */
   async addLevel() {
@@ -3457,6 +3767,76 @@ export class PlantMapComponent implements OnDestroy {
   }
 
   cancelPortPlacement() { this.portPlacementBoxLocalId.set(null); }
+
+  // ── boundary connectors (this object's own shell — placed/edited from INSIDE, persisted onto the parent's box) ──
+  // The same port bridges the interior route and the parent route, and can be a flow Supply/Consumer so flow can be
+  // traced while drilled in. Persistence rides st.setBoundaryPorts (a targeted PUT to the parent's placement).
+
+  /** Arm (or cancel) dropping the next canvas click onto the boundary edge as a new connector. */
+  beginBoundaryPortPlacement() {
+    if (!this.st.boundary()) return;
+    this.portPlacementBoundary.update(value => !value);
+    this.portPlacementBoxLocalId.set(null);
+    this.selectedEquipmentPort.set(null);
+  }
+  cancelBoundaryPortPlacement() { this.portPlacementBoundary.set(false); }
+
+  /** Snap a point onto the nearest edge of the boundary rect, normalized to the rect (0..1). */
+  private projectRectPort(rect: { x: number; y: number; w: number; h: number }, point: { x: number; y: number }) {
+    const nx = Math.max(0, Math.min(1, (point.x - rect.x) / Math.max(1, rect.w)));
+    const ny = Math.max(0, Math.min(1, (point.y - rect.y) / Math.max(1, rect.h)));
+    const distances = [ny, 1 - nx, 1 - ny, nx];
+    const nearest = distances.indexOf(Math.min(...distances));
+    if (nearest === 0) return { x: nx, y: 0 };
+    if (nearest === 1) return { x: 1, y: ny };
+    if (nearest === 2) return { x: nx, y: 1 };
+    return { x: 0, y: ny };
+  }
+
+  private placeBoundaryPort(point: { x: number; y: number }) {
+    const boundary = this.st.boundary();
+    const objectId = this.st.currentNode()?.id;
+    if (!boundary || objectId == null) return;
+    const normalized = this.projectRectPort(boundary, point);
+    const index = this.st.boundaryPorts().length + 1;
+    const port: EquipmentPort = {
+      id: `port-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`,
+      label: `N${index}`, circuit: '', role: 'bidirectional', flowBoundary: 'none', ...normalized,
+    };
+    void this.st.setBoundaryPorts([...this.st.boundaryPorts(), port]);
+    this.selectedEquipmentPort.set({ objectId, portId: port.id });
+    this.portPlacementBoundary.set(false);
+  }
+
+  selectBoundaryPort(portId: string) {
+    const objectId = this.st.currentNode()?.id;
+    if (objectId != null) this.selectedEquipmentPort.set({ objectId, portId });
+  }
+
+  /** In-memory only (per-keystroke text edits) — the map/flow update live; the write waits for blur. */
+  updateBoundaryPortLocal(portId: string, patch: Partial<EquipmentPort>) {
+    this.st.boundaryPorts.update(list => list.map(port => port.id === portId ? { ...port, ...patch } : port));
+  }
+  /** Immediate persist — for discrete changes (a role/flow dropdown) and the text inputs' blur commit. */
+  updateBoundaryPort(portId: string, patch: Partial<EquipmentPort>) {
+    this.updateBoundaryPortLocal(portId, patch);
+    void this.st.setBoundaryPorts(this.st.boundaryPorts());
+  }
+  persistBoundaryPorts() { void this.st.setBoundaryPorts(this.st.boundaryPorts()); }
+
+  async deleteBoundaryPort(portId: string) {
+    const objectId = this.st.currentNode()?.id;
+    if (objectId == null) return;
+    try {
+      await firstValueFrom(this.topologyApi.deleteEquipmentPort(objectId, portId)); // detach any interior pipes
+      this.topologyConnections.update(list => list.filter(connection => !(connection.kind === 'EQUIPMENT_PORT'
+        && connection.equipmentObjectId === objectId && connection.equipmentPortId === portId)));
+      await this.st.setBoundaryPorts(this.st.boundaryPorts().filter(port => port.id !== portId));
+      if (this.selectedEquipmentPort()?.portId === portId) this.selectedEquipmentPort.set(null);
+    } catch (error: any) {
+      this.st.error.set(error?.error?.message || error?.message || 'Could not remove the boundary connector.');
+    }
+  }
 
   private placeEquipmentPort(box: MapBox, point: { x: number; y: number }) {
     const normalized = this.projectEquipmentPort(box, point);
@@ -3631,6 +4011,8 @@ export class PlantMapComponent implements OnDestroy {
     if (handle.boxLocalId != null) this.st.selectBox(handle.boxLocalId);
     if (handle.owner === 'box' && handle.boxLocalId != null && !this.spacePanning() && ev.button === 0) {
       this.drag = { kind: 'equipmentPort', boxLocalId: handle.boxLocalId, portId: handle.portId };
+    } else if (handle.owner === 'boundary' && !this.spacePanning() && ev.button === 0) {
+      this.drag = { kind: 'boundaryPort', portId: handle.portId }; // slide a boundary connector along the edge
     } else {
       this.startPan(ev);
     }
@@ -3807,6 +4189,12 @@ export class PlantMapComponent implements OnDestroy {
   onCanvasDown(ev: PointerEvent) {
     if (this.startMiddlePan(ev)) return;
     if (this.spacePanning() && ev.button === 0) { this.startPan(ev); return; }
+    // Boundary-connector placement: the armed click drops a connector on this object's boundary edge.
+    if (this.portPlacementBoundary() && ev.button === 0) {
+      ev.preventDefault(); ev.stopPropagation();
+      this.placeBoundaryPort(this.contentPoint(ev));
+      return;
+    }
     // Pipe tool: left-click lays a vertex, right-click finishes. (Boxes/nested are click-through in pipe mode.)
     if (this.pipeMode()) {
       if (ev.button === 2) this.finishPipe(); else this.addPipePoint(ev);
@@ -3830,6 +4218,7 @@ export class PlantMapComponent implements OnDestroy {
     this.selectedPipeId.set(null);
     this.selectedFittingId.set(null);
     this.selectedEquipmentPort.set(null);
+    this.clearMultiPipeSelection(); // a fresh marquee (or a click on empty canvas) starts clean
     if (ev.button === 2) {
       const p = this.contentPoint(ev);
       this.drag = { kind: 'draw', startX: p.x, startY: p.y };
@@ -3852,7 +4241,21 @@ export class PlantMapComponent implements OnDestroy {
     const r = el.getBoundingClientRect();
     const mx = ev.clientX - r.left, my = ev.clientY - r.top;
     const old = this.zoom();
-    const next = Math.min(4, Math.max(0.15, old * (ev.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, old * (ev.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    const cx = (mx - this.panX()) / old, cy = (my - this.panY()) / old;
+    this.panX.set(mx - cx * next);
+    this.panY.set(my - cy * next);
+    this.zoom.set(next);
+  }
+
+  /** Zoom by a fixed factor toward the viewport CENTER (the +/- buttons; the wheel zooms toward the cursor). */
+  zoomBy(factor: number) {
+    const old = this.zoom();
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, old * factor));
+    if (next === old) return;
+    const el = this.viewportRef?.nativeElement;
+    const r = el?.getBoundingClientRect();
+    const mx = r ? r.width / 2 : 0, my = r ? r.height / 2 : 0;
     const cx = (mx - this.panX()) / old, cy = (my - this.panY()) / old;
     this.panX.set(mx - cx * next);
     this.panY.set(my - cy * next);
@@ -3872,7 +4275,7 @@ export class PlantMapComponent implements OnDestroy {
     // Modifier-click toggles membership (and starts no drag) so a selection can be built up click by click.
     if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { this.st.toggleBoxSelection(b.localId); return; }
     // Clicking a shape only selects it and starts the normal pan gesture. Relocation requires its move handle.
-    if (!this.st.selectedLocalIds().includes(b.localId)) this.st.selectBox(b.localId);
+    if (!this.st.selectedLocalIds().includes(b.localId)) { this.st.selectBox(b.localId); this.clearMultiPipeSelection(); }
     this.startPan(ev);
   }
 
@@ -3935,15 +4338,29 @@ export class PlantMapComponent implements OnDestroy {
       const s = this.snapPt({ x: nx, y: ny });
       if (d.origins && d.origins.length > 1) {
         // Snap the GRABBED box, then shift the group by that same delta — so snapping can't distort spacing.
-        const dx = Math.max(0, s.x) - d.origX, dy = Math.max(0, s.y) - d.origY;
+        let dx = Math.max(0, s.x) - d.origX, dy = Math.max(0, s.y) - d.origY;
         const byId = this.boxById();
+        const bd = this.st.boundary();
+        if (bd) { // keep the whole group's footprint inside the boundary (clamp the shared delta)
+          let gMinX = Infinity, gMinY = Infinity, gMaxX = -Infinity, gMaxY = -Infinity;
+          for (const o of d.origins) {
+            const bb = byId.get(o.localId); if (!bb) continue;
+            gMinX = Math.min(gMinX, o.x); gMinY = Math.min(gMinY, o.y);
+            gMaxX = Math.max(gMaxX, o.x + bb.width); gMaxY = Math.max(gMaxY, o.y + bb.height);
+          }
+          if (gMinX !== Infinity) {
+            dx = Math.max(bd.x - gMinX, Math.min(dx, bd.x + bd.w - gMaxX));
+            dy = Math.max(bd.y - gMinY, Math.min(dy, bd.y + bd.h - gMaxY));
+          }
+        }
         for (const o of d.origins) {
           const bb = byId.get(o.localId);
           if (bb) this.st.setBoxRect(o.localId, Math.max(0, o.x + dx), Math.max(0, o.y + dy), bb.width, bb.height);
         }
         for (const o of d.origins) this.syncAttachedPipeEndpoints(o.localId);
       } else {
-        this.st.setBoxRect(d.localId, Math.max(0, s.x), Math.max(0, s.y), d.origW, d.origH);
+        const c = this.clampRectToBoundary(Math.max(0, s.x), Math.max(0, s.y), d.origW, d.origH);
+        this.st.setBoxRect(d.localId, c.x, c.y, d.origW, d.origH);
         this.syncAttachedPipeEndpoints(d.localId);
       }
     } else if (d.kind === 'marquee') {
@@ -3951,8 +4368,10 @@ export class PlantMapComponent implements OnDestroy {
       this.rubber.set({ x: Math.min(d.startX, c.x), y: Math.min(d.startY, c.y), w: Math.abs(c.x - d.startX), h: Math.abs(c.y - d.startY) });
     } else if (d.kind === 'resize') {
       const min = this.minSize(this.boxById().get(d.localId)?.shape ?? 'rect');
-      const nw = this.snapLen(Math.max(min.w, d.origW + (ev.clientX - d.startClientX) / z), min.w);
-      const nh = this.snapLen(Math.max(min.h, d.origH + (ev.clientY - d.startClientY) / z), min.h);
+      let nw = this.snapLen(Math.max(min.w, d.origW + (ev.clientX - d.startClientX) / z), min.w);
+      let nh = this.snapLen(Math.max(min.h, d.origH + (ev.clientY - d.startClientY) / z), min.h);
+      const bd = this.st.boundary(); // cap growth at the boundary edge (top-left is fixed while resizing)
+      if (bd) { nw = Math.min(nw, Math.max(min.w, bd.x + bd.w - d.origX)); nh = Math.min(nh, Math.max(min.h, bd.y + bd.h - d.origY)); }
       this.st.setBoxRect(d.localId, d.origX, d.origY, nw, nh);
       this.syncAttachedPipeEndpoints(d.localId);
     } else if (d.kind === 'draw') {
@@ -3967,11 +4386,19 @@ export class PlantMapComponent implements OnDestroy {
       this.movePipeRoute(d, (ev.clientX - d.startClientX) / z, (ev.clientY - d.startClientY) / z);
     } else if (d.kind === 'pipeVtx') {
       this.movePipeVtx(d.pipeId, d.index, this.contentPoint(ev));
+    } else if (d.kind === 'pipeSeg') {
+      this.movePipeSegment(d, (ev.clientX - d.startClientX) / z, (ev.clientY - d.startClientY) / z);
     } else if (d.kind === 'equipmentPort') {
       const box = this.boxById().get(d.boxLocalId);
       if (box) {
         this.updateEquipmentPort(d.boxLocalId, d.portId, this.projectEquipmentPort(box, this.contentPoint(ev)));
         this.syncAttachedPipeEndpoints(d.boxLocalId);
+      }
+    } else if (d.kind === 'boundaryPort') {
+      const boundary = this.st.boundary();
+      if (boundary) {
+        const at = this.projectRectPort(boundary, this.contentPoint(ev));
+        this.st.boundaryPorts.update(list => list.map(port => port.id === d.portId ? { ...port, ...at } : port));
       }
     } else if (d.kind === 'bgMove') {
       this.st.setBackgroundTransform({
@@ -4004,12 +4431,15 @@ export class PlantMapComponent implements OnDestroy {
       if (d.moved) void this.finishPipeMove(d.pipeId);
       return;
     }
-    if (d.kind === 'pipeVtx') {
+    if (d.kind === 'pipeVtx' || d.kind === 'pipeSeg') {
       void this.persistChangedPipes(this.syncMovedPipeBranches(d.pipeId));
       return;
     }
     if (d.kind === 'equipmentPort' || d.kind === 'move' || d.kind === 'resize') {
       this.savePipes(); return;
+    }
+    if (d.kind === 'boundaryPort') {
+      void this.st.setBoundaryPorts(this.st.boundaryPorts()); return; // persist the slid connector to the parent
     }
     if (d.kind === 'draw') {
       const r = this.rubber();
@@ -4020,12 +4450,20 @@ export class PlantMapComponent implements OnDestroy {
       const r = this.rubber();
       this.rubber.set(null);
       if (r) {
-        // Intersection (touch), not containment — grazing a box selects it, which is what people expect.
+        // Intersection (touch), not containment — grazing a box/pipe selects it, which is what people expect.
         const hits = this.st.boxes()
           .filter(b => r.x < b.x + b.width && r.x + r.w > b.x && r.y < b.y + b.height && r.y + r.h > b.y)
           .map(b => b.localId);
         const prev = this.st.selectedLocalIds();
         this.st.setSelection(d.additive ? [...prev, ...hits.filter(i => !prev.includes(i))] : hits);
+        // Pipes join the marquee too — they're the main content, so a drag-select must be able to grab & delete them.
+        const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+        const pipeHits = new Set<string>();
+        for (const p of this.pipeGeos()) {
+          if (p.parentId === parent && p.points.length >= 2 && this.pathHitsRect(p.points, r)) pipeHits.add(p.id);
+        }
+        this.selectedPipeIds.set(d.additive ? new Set([...this.selectedPipeIds(), ...pipeHits]) : pipeHits);
+        if (pipeHits.size) this.selectedPipeId.set(null);
       }
     }
     // move / resize were persisted live via setBoxRect's debounced save
@@ -4035,12 +4473,13 @@ export class PlantMapComponent implements OnDestroy {
    *  then jumps straight into inline naming so you type its name in one motion (no "New object"). */
   private async createDrawnObject(r: { x: number; y: number; w: number; h: number }) {
     const shape = this.drawShape();
+    const min = this.minSize(shape);
+    const c = this.clampRectToBoundary(r.x, r.y, Math.max(min.w, r.w), Math.max(min.h, r.h)); // keep new shapes in bounds
     const created = await this.st.createChild({ name: this.defaultDrawName(shape), type: this.newType });
     if (!created) return;
-    const localId = this.st.placeChild(created.id, r.x, r.y, shape);
+    const localId = this.st.placeChild(created.id, c.x, c.y, shape);
     if (localId == null) return;
-    const min = this.minSize(shape);
-    this.st.setBoxRect(localId, r.x, r.y, Math.max(min.w, r.w), Math.max(min.h, r.h));
+    this.st.setBoxRect(localId, c.x, c.y, c.w, c.h);
     const box = this.st.boxes().find(b => b.localId === localId);
     if (box) this.startRenameBox(box);
   }
@@ -4220,6 +4659,17 @@ export class PlantMapComponent implements OnDestroy {
     if (id != null) await this.removeBoxesCleanly([id]);
   }
 
+  /** Delete a whole marquee/keyboard selection at once — the on-canvas pipes first, then the boxes. */
+  private async deleteSelection(boxIds: number[], pipeIds: string[]) {
+    const parent = this.st.canvasNode()?.id ?? this.st.currentNode()?.id ?? null;
+    for (const id of pipeIds) {
+      const pipe = this.pipeGeos().find(p => p.id === id);
+      if (pipe && pipe.parentId === parent) await this.deletePipe(id);
+    }
+    this.selectedPipeIds.set(new Set());
+    if (boxIds.length) await this.removeBoxesCleanly(boxIds);
+  }
+
   private async removeBoxesCleanly(localIds: number[]) {
     for (const localId of localIds) {
       const box = this.boxById().get(localId);
@@ -4288,8 +4738,12 @@ export class PlantMapComponent implements OnDestroy {
     if (!file.type.startsWith('image/')) { this.st.error.set('The reference must be an image file.'); return; }
     if (file.size > 10 * 1024 * 1024) { this.st.error.set('Image too large (max 10 MB) — crop or downscale it.'); return; }
     const did = this.st.currentDiagramId(); // snapshot: drop the write if the user drills away before the upload lands
+    const insideObject = !!this.st.boundary();
     this.bgUploading.set(true);
-    try { await this.st.uploadBackground(file, did); }
+    try {
+      const ok = await this.st.uploadBackground(file, did);
+      if (ok && insideObject) this.pendingBgFit = true; // fit it to the boundary once onBgLoad reports its size
+    }
     finally { this.bgUploading.set(false); }
   }
   clearBackground() { void this.st.clearBackgroundImage(); }

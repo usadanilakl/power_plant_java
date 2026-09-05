@@ -23,6 +23,16 @@ export class ConversationService {
     return this.http.get<SpringApiResponse<ConversationDto[]>>(`${this.apiUrl}/my`);
   }
 
+  /** The WO Q&A inbox: all OPEN Maximo-WO questions (inclusive), each flagged directedToMe. */
+  getWoOpenQuestions(): Observable<SpringApiResponse<ConversationDto[]>> {
+    return this.http.get<SpringApiResponse<ConversationDto[]>>(`${this.apiUrl}/wo-open`);
+  }
+
+  /** Active users {id, name} for the WO Q&A directed-recipients picker. */
+  getDirectableUsers(): Observable<SpringApiResponse<{ id: number; name: string }[]>> {
+    return this.http.get<SpringApiResponse<{ id: number; name: string }[]>>(`${this.apiUrl}/directable-users`);
+  }
+
   startConversation(dto: ConversationDto): Observable<SpringApiResponse<ConversationDto>> {
     return this.http.post<SpringApiResponse<ConversationDto>>(this.apiUrl, dto.toJson());
   }

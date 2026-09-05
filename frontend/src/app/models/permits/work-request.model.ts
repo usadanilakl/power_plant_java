@@ -21,10 +21,19 @@ import { wrStatusStyle } from './work-request-status-style';
  * <p>The submitter block is excluded for the same reason from the other direction: it is requester
  * PROVENANCE, recorded by the PWA and never edited here. Rendering it as an input would offer an
  * operator an editable field whose value `toJson()` deliberately discards.
+ *
+ * <p>The operator-override block is excluded on both counts. `operatorWorkAreas` /
+ * `effectiveWorkAreas` are the same structural data as `workAreas`; `operatorOverrideBy` / `At`
+ * and the rest of `effective*` are stamped or derived server-side and discarded by `toJson()`.
+ * The override is edited through its own panel and its own endpoint, not as WR form fields —
+ * putting it in this map would let it be saved down the SharePoint-pushing update path.
  */
 export type WorkRequestFieldName = Exclude<
   keyof WorkRequestModel,
   'workAreas' | 'timeSubmitted' | 'submitterName' | 'submitterEmail' | 'submitterPhone' | 'submitterCompany'
+  | 'operatorWorkAreas' | 'operatorAffectedEquipment' | 'operatorWorkScope'
+  | 'operatorOverrideBy' | 'operatorOverrideAt'
+  | 'effectiveWorkAreas' | 'effectiveAffectedEquipment' | 'effectiveWorkScope'
 >;
 
 /**
@@ -68,6 +77,21 @@ export interface WorkRequestModel extends BaseModel {
   dailyPermitPackageId: number | null;
   /** Derived server-side: no work area is set, so somebody has to pick one before permits. */
   areaNotSpecified: boolean | null;
+
+  // ---- Operator processing override ----
+  // What the operator processing this request decided its areas / equipment / scope really are.
+  // Kept apart from the requester-submitted fields above, so the request still shows what was
+  // actually asked for. `effective*` is what permit generation reads.
+  operatorWorkAreas: WorkRequestAreaDto[];
+  operatorAffectedEquipment: string | null;
+  operatorWorkScope: string | null;
+  operatorOverrideBy: string | null;
+  operatorOverrideAt: string | null;
+  /** Derived server-side: the operator's value where they set one, the requester's otherwise. */
+  effectiveWorkAreas: WorkRequestAreaDto[];
+  effectiveAffectedEquipment: string | null;
+  effectiveWorkScope: string | null;
+
   /** Job the grouping-key match suggests. Advisory — nothing is attached until an operator says so. */
   suggestedJobLogId: number | null;
   /** Hazards the requester declared on the request itself. Seeds the generated permits. */
@@ -117,6 +141,14 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   workAreas: WorkRequestAreaDto[];
   dailyPermitPackageId: number | null;
   areaNotSpecified: boolean | null;
+  operatorWorkAreas: WorkRequestAreaDto[];
+  operatorAffectedEquipment: string | null;
+  operatorWorkScope: string | null;
+  operatorOverrideBy: string | null;
+  operatorOverrideAt: string | null;
+  effectiveWorkAreas: WorkRequestAreaDto[];
+  effectiveAffectedEquipment: string | null;
+  effectiveWorkScope: string | null;
   suggestedJobLogId: number | null;
   declaredHazards: SwHazards | null;
   declaredHotWorkMeasures: HotWorkMeasures | null;
@@ -154,6 +186,16 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.workAreas = data.workAreas ?? [];
     this.dailyPermitPackageId = data.dailyPermitPackageId ?? null;
     this.areaNotSpecified = data.areaNotSpecified ?? null;
+    this.operatorWorkAreas = data.operatorWorkAreas ?? [];
+    this.operatorAffectedEquipment = data.operatorAffectedEquipment ?? null;
+    this.operatorWorkScope = data.operatorWorkScope ?? null;
+    this.operatorOverrideBy = data.operatorOverrideBy ?? null;
+    this.operatorOverrideAt = data.operatorOverrideAt ?? null;
+    // Fall back to the requester's values, so a DTO built client-side (or by an older server
+    // that does not send the derived triplet) still generates permits instead of blank ones.
+    this.effectiveWorkAreas = data.effectiveWorkAreas ?? data.workAreas ?? [];
+    this.effectiveAffectedEquipment = data.effectiveAffectedEquipment ?? data.affectedEquipment ?? null;
+    this.effectiveWorkScope = data.effectiveWorkScope ?? data.workScope ?? null;
     this.suggestedJobLogId = data.suggestedJobLogId ?? null;
     this.declaredHazards = data.declaredHazards ? new SwHazards(data.declaredHazards) : null;
     this.declaredHotWorkMeasures = data.declaredHotWorkMeasures ? new HotWorkMeasures(data.declaredHotWorkMeasures) : null;
@@ -197,6 +239,11 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       dailyPermitPackageId: this.dailyPermitPackageId,
       // areaNotSpecified is derived server-side and never sent back — including it would invite a
       // reader to treat it as settable.
+      operatorWorkAreas: this.operatorWorkAreas ?? [],
+      operatorAffectedEquipment: this.operatorAffectedEquipment,
+      operatorWorkScope: this.operatorWorkScope,
+      // operatorOverrideBy/At are stamped server-side, and effective* is derived there — neither
+      // is sent back, for the same reason as areaNotSpecified.
       suggestedJobLogId: this.suggestedJobLogId,
       declaredHazards: this.declaredHazards ? { ...this.declaredHazards } : null,
       declaredHotWorkMeasures: this.declaredHotWorkMeasures ? { ...this.declaredHotWorkMeasures } : null,
@@ -248,6 +295,14 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       workAreas: json.workAreas ?? [],
       dailyPermitPackageId: json.dailyPermitPackageId ?? null,
       areaNotSpecified: json.areaNotSpecified ?? null,
+      operatorWorkAreas: json.operatorWorkAreas ?? [],
+      operatorAffectedEquipment: json.operatorAffectedEquipment ?? null,
+      operatorWorkScope: json.operatorWorkScope ?? null,
+      operatorOverrideBy: json.operatorOverrideBy ?? null,
+      operatorOverrideAt: json.operatorOverrideAt ?? null,
+      effectiveWorkAreas: json.effectiveWorkAreas ?? json.workAreas ?? [],
+      effectiveAffectedEquipment: json.effectiveAffectedEquipment ?? json.affectedEquipment ?? null,
+      effectiveWorkScope: json.effectiveWorkScope ?? json.workScope ?? null,
       suggestedJobLogId: json.suggestedJobLogId ?? null,
       declaredHazards: json.declaredHazards ? new SwHazards(json.declaredHazards) : null,
       declaredHotWorkMeasures: json.declaredHotWorkMeasures ? new HotWorkMeasures(json.declaredHotWorkMeasures) : null,

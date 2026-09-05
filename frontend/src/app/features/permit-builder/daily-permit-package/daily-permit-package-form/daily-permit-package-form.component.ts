@@ -1,7 +1,10 @@
 import { Component, Input, computed, Signal, signal, inject, DestroyRef, effect, output, Output, EventEmitter } from '@angular/core';
 import { WorkRequestDisplayComponent } from "../../work-request/work-request-display/work-request-display.component";
 import { SafeWorkFormComponent } from "../../safe-work/safe-work-form/safe-work-form.component";
-import { WorkRequestDto } from '../../../../models/permits/work-request.model';
+import { WorkRequestAreaDto, WorkRequestDto } from '../../../../models/permits/work-request.model';
+import { WorkRequestService } from '../../../../services/permits/work-request.service';
+import { CurrentWorkRequestService } from '../../../../services/current-items-services/current-work-requests.service';
+import { WorkAreaMapPickerComponent } from '../../work-area/components/work-area-map-picker/work-area-map-picker.component';
 import { WorkAreaDto } from '../../../../models/permits/work-area.model';
 import { WorkAreaApiService } from '../../work-area/services/work-area-api.service';
 import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
@@ -23,7 +26,7 @@ import { WorkCategoryProfileDto } from '../../../../models/permits/work-category
 @Component({
   selector: 'app-daily-permit-package-form',
   standalone: true,
-  imports: [WorkRequestDisplayComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, FormsModule],
+  imports: [WorkRequestDisplayComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, FormsModule, WorkAreaMapPickerComponent],
   templateUrl: './daily-permit-package-form.component.html',
   styleUrl: './daily-permit-package-form.component.css'
 })
@@ -58,16 +61,171 @@ export class DailyPermitPackageFormComponent {
   private readonly loadAreas = this.workAreaApi.getAll()
     .subscribe(areas => this.workAreaOptions.set(areas));
 
+  /**
+   * The request as permits should be generated from it — the operator's area / equipment / scope
+   * decision applied over what the requester submitted.
+   *
+   * <p>Every generator below reads this instead of `workRequest()`, which is the whole point of
+   * having it: the override then reaches permits generated now AND any permit added to the
+   * package later, without each generator having to remember to consult it. The underlying
+   * request object is never mutated — it keeps showing what was actually asked for.
+   *
+   * <p>`workArea` is re-pointed too, not just the list: it is the FK a permit persists against,
+   * so leaving it on the requester's guess would file the permit under the wrong area even when
+   * the operator had corrected it.
+   */
+  effectiveRequest: Signal<WorkRequestDto> = computed(() => {
+    const wr = this.workRequest();
+    if (!this.hasOperatorOverride()) return wr;
+    const patched = WorkRequestDto.fromJson({ ...wr.toJson() });
+    patched.workAreas = wr.effectiveWorkAreas ?? [];
+    patched.affectedEquipment = wr.effectiveAffectedEquipment ?? null;
+    patched.workScope = wr.effectiveWorkScope ?? null;
+    const primary = (wr.effectiveWorkAreas ?? []).find(a => a.primary) ?? (wr.effectiveWorkAreas ?? [])[0];
+    const primaryDto = primary ? this.areaDtoFor(primary) : null;
+    if (primaryDto) {
+      patched.workArea = primaryDto;
+      patched.location = primary!.name;
+    }
+    return patched;
+  });
+
+  /** True when an operator has corrected any of area / equipment / scope on this request. */
+  hasOperatorOverride = computed(() => {
+    const wr = this.workRequest();
+    return (wr.operatorWorkAreas?.length ?? 0) > 0
+      || !!wr.operatorAffectedEquipment?.trim()
+      || !!wr.operatorWorkScope?.trim();
+  });
+
+  // ---- Operator area / equipment / scope panel -------------------------------------------
+  //
+  // A request can arrive with no area at all (the PWA's "not sure which area" path exists
+  // because an offline cold start has no shapes to pick from), or with an equipment line or
+  // scope too vague to put on a permit. Correcting it here once beats correcting every
+  // generated permit by hand, and again for every permit added later.
+
+  private workRequestApi = inject(WorkRequestService);
+  private currentWorkRequestService = inject(CurrentWorkRequestService);
+
+  overridePanelOpen = signal(false);
+  /** Working copy — nothing is committed until Apply, so a half-edited area list never generates. */
+  overrideAreas = signal<WorkRequestAreaDto[]>([]);
+  overrideEquipment = signal('');
+  overrideScope = signal('');
+  overrideSaving = signal(false);
+  overrideError = signal<string | null>(null);
+
+  /** Ids currently in the working set, so the map can draw the whole running selection. */
+  chosenAreaIds = computed(() => this.overrideAreas().map(a => a.id));
+
+  /** Opens the panel seeded with what is in force now, so editing starts from the truth. */
+  openOverridePanel(): void {
+    const wr = this.workRequest();
+    this.overrideAreas.set((wr.effectiveWorkAreas ?? []).map(a => ({ ...a })));
+    this.overrideEquipment.set(wr.effectiveAffectedEquipment ?? '');
+    this.overrideScope.set(wr.effectiveWorkScope ?? '');
+    this.overrideError.set(null);
+    this.overridePanelOpen.set(true);
+  }
+
+  /**
+   * Adds an area picked on the map. Add-only and idempotent: clicking a shape that is already
+   * in the set does nothing.
+   *
+   * <p>Not a toggle, deliberately. On a map a click is how you inspect a shape as much as how
+   * you choose it, and a toggle would let an operator drop an area — and with it a Hot Work or
+   * Confined Space permit — by clicking to look at it. Removal is an explicit × in the list.
+   */
+  onMapAreaPicked(area: WorkAreaDto | null): void {
+    if (!area?.id) return;
+    const current = this.overrideAreas();
+    if (current.some(a => a.id === area.id)) return;
+    this.overrideAreas.set([...current, {
+      id: area.id,
+      name: area.name ?? '',
+      primary: current.length === 0,
+      confinedSpaceEntry: false,
+      spaceName: null,
+      hotWork: false,
+    } as WorkRequestAreaDto]);
+  }
+
+  removeOverrideArea(areaId: number | null): void {
+    const current = this.overrideAreas();
+    const removed = current.find(a => a.id === areaId);
+    const remaining = current.filter(a => a.id !== areaId);
+    // Removing the primary would leave the list without one, and everything downstream that asks
+    // for "the" area then silently falls back to whichever is first. Promote explicitly instead.
+    if (removed?.primary && remaining.length) remaining[0] = { ...remaining[0], primary: true };
+    this.overrideAreas.set(remaining);
+  }
+
+  /** Patches one field of one chosen area (primary / hotWork / confinedSpaceEntry / spaceName). */
+  patchOverrideArea(areaId: number | null, patch: Partial<WorkRequestAreaDto>): void {
+    this.overrideAreas.set(this.overrideAreas().map(a => {
+      if (a.id !== areaId) {
+        // Primary is exclusive — setting it on one area has to clear it everywhere else, or the
+        // "primary or first" fallback quietly picks whichever happens to be first in the list.
+        return patch.primary ? { ...a, primary: false } : a;
+      }
+      return { ...a, ...patch };
+    }));
+  }
+
+  applyOverride(): void {
+    const id = this.workRequest().id;
+    if (!id) return;
+    this.overrideSaving.set(true);
+    this.overrideError.set(null);
+    this.workRequestApi.setOperatorOverride(id, {
+      operatorWorkAreas: this.overrideAreas(),
+      operatorAffectedEquipment: this.overrideEquipment().trim(),
+      operatorWorkScope: this.overrideScope().trim(),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: res => {
+          this.overrideSaving.set(false);
+          this.overridePanelOpen.set(false);
+          this.currentWorkRequestService.updateSelectedWorkRequest(res.responseData);
+        },
+        error: err => {
+          this.overrideSaving.set(false);
+          this.overrideError.set(err?.error?.message ?? 'Could not save. The permits below still show the submitted values.');
+        },
+      });
+  }
+
+  clearOverride(): void {
+    const id = this.workRequest().id;
+    if (!id) return;
+    this.overrideSaving.set(true);
+    this.workRequestApi.clearOperatorOverride(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: res => {
+          this.overrideSaving.set(false);
+          this.overridePanelOpen.set(false);
+          this.currentWorkRequestService.updateSelectedWorkRequest(res.responseData);
+        },
+        error: err => {
+          this.overrideSaving.set(false);
+          this.overrideError.set(err?.error?.message ?? 'Could not clear the override.');
+        },
+      });
+  }
+
   safeWork: Signal<SafeWorkDto> = computed(() =>
-    this.safeWorkInput?.() ?? SafeWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea, this.categoryProfile())
+    this.safeWorkInput?.() ?? SafeWorkDto.generatePermitFromRequest(this.effectiveRequest(), this.effectiveRequest().workArea, this.categoryProfile())
   );
 
   hotWork: Signal<HotWorkDto> = computed(() =>
-    this.hotWorkInput?.() ?? HotWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea, this.categoryProfile())
+    this.hotWorkInput?.() ?? HotWorkDto.generatePermitFromRequest(this.effectiveRequest(), this.effectiveRequest().workArea, this.categoryProfile())
   );
 
   confinedSpace: Signal<ConfinedSpaceDto> = computed(() =>
-    this.confinedSpaceInput?.() ?? ConfinedSpaceDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea, this.categoryProfile())
+    this.confinedSpaceInput?.() ?? ConfinedSpaceDto.generatePermitFromRequest(this.effectiveRequest(), this.effectiveRequest().workArea, this.categoryProfile())
   );
 
   /**
@@ -81,7 +239,7 @@ export class DailyPermitPackageFormComponent {
    * every request submitted before this existed.
    */
   confinedSpaces: Signal<ConfinedSpaceDto[]> = computed(() => {
-    const wr = this.workRequest();
+    const wr = this.effectiveRequest();
     if (this.confinedSpaceInput?.()) return [this.confinedSpaceInput()!];
 
     const declared = wr.workAreas ?? [];
@@ -110,7 +268,7 @@ export class DailyPermitPackageFormComponent {
    * genuinely cannot be shared and which the requester could not have known at submission time.
    */
   hotWorks: Signal<HotWorkDto[]> = computed(() => {
-    const wr = this.workRequest();
+    const wr = this.effectiveRequest();
     if (this.hotWorkInput?.()) return [this.hotWorkInput()!];
 
     const declared = wr.workAreas ?? [];
@@ -125,7 +283,7 @@ export class DailyPermitPackageFormComponent {
   });
 
   /** True when the request covers more than one area, so the operator gets the choice below. */
-  isMultiArea = computed(() => (this.workRequest().workAreas ?? []).length > 1);
+  isMultiArea = computed(() => (this.effectiveRequest().workAreas ?? []).length > 1);
 
   /**
    * One Safe Work spanning every area, or one per area — the operator's call, not ours.
@@ -137,7 +295,7 @@ export class DailyPermitPackageFormComponent {
   splitSafeWorkPerArea = signal(false);
 
   safeWorks: Signal<SafeWorkDto[]> = computed(() => {
-    const wr = this.workRequest();
+    const wr = this.effectiveRequest();
     const areas = wr.workAreas ?? [];
     if (this.safeWorkInput?.() || !this.splitSafeWorkPerArea() || areas.length < 2) {
       return [this.safeWork()];

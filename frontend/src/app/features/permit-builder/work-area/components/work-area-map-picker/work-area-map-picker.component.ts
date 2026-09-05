@@ -1,5 +1,5 @@
 import {
-  Component, DestroyRef, ElementRef, forwardRef, inject, signal, ViewChild, OnInit, output
+  Component, DestroyRef, ElementRef, forwardRef, inject, Input, signal, ViewChild, OnInit, output
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -188,6 +188,24 @@ export class WorkAreaMapPickerComponent implements ControlValueAccessor, OnInit 
   isSelected(shape: ParsedShape): boolean {
     const selectedId = this.selectedWorkAreaId();
     return !!selectedId && shape.workAreas.some(wa => wa.id === selectedId);
+  }
+
+  /**
+   * Areas already chosen by a caller that collects several — the picker itself stays
+   * single-select (one `selectedWorkAreaId`, one `workAreaSelected` per click), and these are
+   * drawn in their own style so a multi-select caller can show the running set on the map.
+   *
+   * <p>Without it such a caller can only ever highlight the area clicked last, and the operator
+   * has to hold the rest of their selection in their head while looking straight at the map that
+   * should be showing it.
+   *
+   * <p>Purely additive: callers that do not pass it see exactly the previous behaviour.
+   */
+  @Input() chosenWorkAreaIds: (number | null)[] = [];
+
+  isChosen(shape: ParsedShape): boolean {
+    if (!this.chosenWorkAreaIds.length) return false;
+    return shape.workAreas.some(wa => this.chosenWorkAreaIds.includes(wa.id));
   }
 
   // --- Selection ---

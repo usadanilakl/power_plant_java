@@ -112,6 +112,22 @@
   border-color: #2e7d32;
 }
 
+/* Already in a multi-select caller's running set. Green like `selected` because it means the
+   same thing to the operator — "this area is in" — but flatter and dashed, so the area they
+   just clicked still reads as the one in focus. */
+.shape-overlay.chosen {
+  background: rgba(76, 175, 80, 0.22);
+  border-style: dashed;
+  border-color: #4caf50;
+}
+
+/* Focus beats membership: an area that is both stays drawn as selected. */
+.shape-overlay.chosen.selected {
+  background: rgba(76, 175, 80, 0.35);
+  border-style: solid;
+  border-color: #2e7d32;
+}
+
 .shape-label-anchor {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -133,6 +149,13 @@
   white-space: nowrap;
 }
 
+.shape-label.chosen {
+  color: #1b5e20;
+  background: rgba(200, 230, 201, 0.9);
+  font-weight: 700;
+}
+
+/* After .chosen, so an area that is both wins the solid selected treatment. */
 .shape-label.selected {
   color: #fff;
   background: #2e7d32;

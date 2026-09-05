@@ -135,6 +135,37 @@ public class WorkRequest extends BasePermitEntity {
     @Column(columnDefinition = "TEXT")
     private String workAreasJson;
 
+    // ---- Operator processing override (2026-09-04) ----------------------------------------
+    //
+    // A request can arrive with no area at all — the PWA's "I'm not sure which area this is"
+    // path exists precisely because an offline cold start has no shapes to pick from — and it
+    // can arrive with an equipment line or a scope the operator knows to be wrong or too vague
+    // to put on a permit. The operator processing it knows better, and until now had to correct
+    // every generated permit by hand, one at a time, and again for any permit added later.
+    //
+    // These carry that correction, and are kept SEPARATE from the requester's own fields on
+    // purpose. Overwriting `location` / `affectedEquipment` / `workScope` in place would destroy
+    // the record of what was actually asked for — the thing a permit is issued against, and the
+    // thing anyone reviewing the job afterwards needs to see. So the request keeps saying what
+    // the requester said, these say what the operator decided, and permit generation reads the
+    // "effective" pair below.
+
+    /** Operator's area selection, overriding {@link #workAreasJson} for permit generation. */
+    @Column(columnDefinition = "TEXT")
+    private String operatorWorkAreasJson;
+
+    /** Operator's equipment line, overriding {@link #affectedEquipment}. */
+    @Column(columnDefinition = "TEXT")
+    private String operatorAffectedEquipment;
+
+    /** Operator's work scope, overriding the requester's. */
+    @Column(columnDefinition = "TEXT")
+    private String operatorWorkScope;
+
+    /** Who set the override, and when — it changes what lands on a signed permit. */
+    private String operatorOverrideBy;
+    private String operatorOverrideAt;
+
     private static final ObjectMapper HAZARD_MAPPER = new ObjectMapper();
 
     public SwHazards getDeclaredHazards() {
@@ -203,6 +234,64 @@ public class WorkRequest extends BasePermitEntity {
         java.util.List<WorkRequestArea> parsed = WorkRequestArea.fromJson(json);
         if (parsed.isEmpty() && !"[]".equals(json.trim())) return;
         setWorkAreas(parsed);
+    }
+
+    // ---- Operator override accessors ------------------------------------------------------
+
+    public java.util.List<WorkRequestArea> getOperatorWorkAreas() {
+        return WorkRequestArea.fromJson(operatorWorkAreasJson);
+    }
+
+    /**
+     * Replace the operator's area selection, and keep the summary booleans in step exactly as
+     * {@link #setWorkAreas} does — the permit generator, the WR table, SharePoint and the Power
+     * Automate flow all read those, and none of them knows about the override.
+     *
+     * <p>Turn-on only, for the same reason as the requester's setter: an operator who ticks hot
+     * work in one area must not silently un-answer a "yes, hot work" the requester gave for the
+     * job as a whole.
+     */
+    public void setOperatorWorkAreas(java.util.List<WorkRequestArea> areas) {
+        this.operatorWorkAreasJson = WorkRequestArea.toJson(areas);
+        if (areas == null || areas.isEmpty()) return;
+        if (areas.stream().anyMatch(WorkRequestArea::isHotWork)) this.isHotWorkRequired = Boolean.TRUE;
+        if (areas.stream().anyMatch(WorkRequestArea::isConfinedSpaceEntry)) {
+            this.isConfinedSpaceEntryRequired = Boolean.TRUE;
+        }
+    }
+
+    /** Has an operator set any part of the processing override? */
+    public boolean hasOperatorOverride() {
+        return !getOperatorWorkAreas().isEmpty()
+                || isPresent(operatorAffectedEquipment)
+                || isPresent(operatorWorkScope);
+    }
+
+    /**
+     * The areas permits are generated against: the operator's selection when they made one,
+     * otherwise the requester's.
+     *
+     * <p>All-or-nothing per field, not a merge. A half-merged area list would be a set of areas
+     * nobody chose, and the operator's list is an answer to "which areas is this actually in",
+     * not an addition to the requester's guess.
+     */
+    public java.util.List<WorkRequestArea> getEffectiveWorkAreas() {
+        java.util.List<WorkRequestArea> override = getOperatorWorkAreas();
+        return override.isEmpty() ? getWorkAreas() : override;
+    }
+
+    /** The equipment permits are generated against — operator's when set, else the requester's. */
+    public String getEffectiveAffectedEquipment() {
+        return isPresent(operatorAffectedEquipment) ? operatorAffectedEquipment : getAffectedEquipment();
+    }
+
+    /** The scope permits are generated against — operator's when set, else the requester's. */
+    public String getEffectiveWorkScope() {
+        return isPresent(operatorWorkScope) ? operatorWorkScope : getWorkScope();
+    }
+
+    private static boolean isPresent(String value) {
+        return value != null && !value.isBlank();
     }
 
     public HotWorkProfile getHotWorkProfile() {

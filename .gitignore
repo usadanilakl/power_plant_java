@@ -213,3 +213,6 @@ nul
 # armed and pointing at a real hub. Ship the .example files instead.
 sync-config.properties
 sharepoint-sync.properties
+
+# Rescaled Red Tag pattern copies, regenerated per zoom level by PatternCatalog.
+automation/redtag/patterns/.scaled/

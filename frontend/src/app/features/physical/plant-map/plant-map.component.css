@@ -94,8 +94,10 @@
 .muted { color: #777; } .muted.save { color: #7ee787; }
 .error { color: #ff7b72; }
 .hint2 { color: #777; font-size: 11px; margin-left: 8px; }
-.zoom-btn { margin-left: auto; background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 12px; }
+.zoom-ctrl { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; }
+.zoom-btn { background: #2a2a2a; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 12px; }
 .zoom-btn:hover { background: #333; }
+.zoom-btn.zoom-pct { min-width: 46px; text-align: center; }
 .scroll { flex: 1 1 auto; overflow: hidden; background: #191919; min-height: 0; cursor: grab; touch-action: none; position: relative; }
 .scroll.space-pan, .scroll.space-pan .box { cursor: grab !important; }
 .follow-overlay { position: absolute; top: 10px; left: 10px; z-index: 20; display: flex; align-items: center; gap: 6px;
@@ -122,6 +124,9 @@
 .wp { fill: #fff; stroke: #7cc6ff; stroke-width: 2; cursor: grab; vector-effect: non-scaling-stroke; }
 .wp-add { fill: rgba(124,198,255,0.55); stroke: #7cc6ff; stroke-width: 1; cursor: crosshair; opacity: 0.55; vector-effect: non-scaling-stroke; }
 .wp-add:hover { opacity: 1; }
+/* draggable straight-section hit line (route edit) — move a whole segment; adjacent sections stretch/lean */
+.pipe-seg-hit { fill: none; stroke: transparent; stroke-linecap: round; pointer-events: stroke; cursor: move; }
+.pipe-seg-hit:hover { stroke: rgba(124,198,255,0.28); }
 
 /* ── Footprints (plan-view shapes) ── the fill + border color read by system/type, the shape reads the
    physical form, the label reads identity. No overflow:hidden so handles show on every shape. */
@@ -373,7 +378,7 @@
 .opipe-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; stroke-linecap: round; stroke-linejoin: round; }
 .visible-pipe-hit { pointer-events: stroke; }
 /* ── nominal flow: animated dashes on reached pipe segments; unreached routes are dimmed ── */
-.opipe-flow { fill: none; pointer-events: none; stroke: #eaf6ff; stroke-linecap: round; stroke-linejoin: round;
+.opipe-flow { fill: none; pointer-events: none; stroke: var(--flow-color, #eaf6ff); stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 6 16; animation: flowdash 0.7s linear infinite; opacity: 0.95; }
 .opipe-flow.reversed { animation-direction: reverse; }
 @keyframes flowdash { to { stroke-dashoffset: -22; } }
@@ -434,11 +439,13 @@
 /* ── Top interaction layer: fittings + nested pipe/fitting hit targets sit above nested container boxes ── */
 .top-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 12; }
 .top-layer .fitting, .top-layer .wp, .top-layer .wp-add, .top-layer .pipe-conn, .top-layer .pipe-end-handle,
-.top-layer .equipment-port { pointer-events: auto; } /* opipe-hit keeps its own pointer-events: stroke */
+.top-layer .pipe-seg-hit, .top-layer .equipment-port { pointer-events: auto; } /* opipe-hit keeps its own pointer-events: stroke */
+.top-layer .pipe-seg-hit { pointer-events: stroke; }
 .pipe-mode .top-layer .fitting, .pipe-mode .top-layer .opipe-hit,
 .pipe-mode .top-layer .wp, .pipe-mode .top-layer .wp-add, .pipe-mode .top-layer .pipe-conn,
-.pipe-mode .top-layer .pipe-end-handle { pointer-events: none; } /* draw-through in pipe mode */
+.pipe-mode .top-layer .pipe-seg-hit, .pipe-mode .top-layer .pipe-end-handle { pointer-events: none; } /* draw-through in pipe mode */
 .pipe-end-handle { cursor: pointer; }
+.pipe-end-handle circle.hit { fill: transparent !important; stroke: none !important; pointer-events: all; } /* enlarged grab area (connect mode only) */
 .pipe-end-handle circle { fill: #17202a; stroke: #7cc6ff; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .pipe-end-handle text { fill: #e8f5ff; font: 700 8px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .pipe-end-handle.source-choice circle { animation: endpointPulse 1.1s ease-in-out infinite; }
@@ -446,10 +453,15 @@
 .pipe-end-handle.target circle { fill: #173326; stroke: #55c986; }
 .pipe-end-handle.target.hover circle, .pipe-end-handle.target:hover circle { fill: #1e6a3e; stroke: #93f7bb; stroke-width: 3; }
 .selected-pipe-end-label { pointer-events: none; }
-.selected-pipe-end-label circle { fill: #17202a; stroke: #a9d4ff; stroke-width: 1.5; vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 1px 2px #000); }
-.selected-pipe-end-label text { fill: #f4f9ff; font: 700 8px system-ui, sans-serif; text-anchor: middle;
+.selected-pipe-end-label circle { fill: #10161d; stroke: #a9d4ff; stroke-width: 2.5; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 3px #000); }
+.selected-pipe-end-label text { fill: #f4f9ff; font: 800 11px system-ui, sans-serif; text-anchor: middle;
   dominant-baseline: central; }
+/* A = start (green), B = end (amber) — clear, distinct, always on top of fittings/handles. */
+.selected-pipe-end-label.end-a circle { stroke: #7ee787; }
+.selected-pipe-end-label.end-a text { fill: #d6ffdf; }
+.selected-pipe-end-label.end-b circle { stroke: #ffca7a; }
+.selected-pipe-end-label.end-b text { fill: #ffe9c8; }
 .top-layer .pipe-body-handle { pointer-events: none; }
 .pipe-body-handle { cursor: crosshair; }
 .pipe-body-handle circle { fill: #17202a; stroke: #7cc6ff; stroke-width: 2; vector-effect: non-scaling-stroke; }
@@ -482,6 +494,9 @@
 .pipe-conn-bg { fill: #143050; stroke: #7cc6ff; stroke-width: 2; }
 .pipe-conn.in .pipe-conn-bg { fill: #143a2a; stroke: #3fbf7f; }
 .pipe-conn-arrow { fill: #bcd8f5; }
+/* same-canvas gap connector (partner is on this level, just not touching) — amber, to read as "linked here" */
+.pipe-conn.same .pipe-conn-bg { fill: #3a2f12; stroke: #ffca7a; }
+.pipe-conn.same .pipe-conn-arrow { fill: #ffe6bf; }
 .pipe-junction { fill: #cfe6ff; stroke: #12151a; stroke-width: 1; pointer-events: none; vector-effect: non-scaling-stroke; } /* tee/connection node */
 .pipe-conn.in .pipe-conn-arrow { fill: #baf0d0; }
 .pipe-conn:hover .pipe-conn-bg { filter: brightness(1.35); }
@@ -497,6 +512,11 @@
 .route-edit-btn { width: 100%; margin-top: 6px; padding: 5px 8px; font-size: 12px; background: #1c2230; color: #cfe6ff;
   border: 1px solid #2c3547; border-radius: 5px; cursor: pointer; }
 .route-edit-btn.on { background: #15334f; border-color: #7cc6ff; color: #fff; }
+.pipe-extend-row { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+.pipe-extend-row .lbl2 { color: #8aa0b6; font-size: 11px; }
+.pipe-extend-row button { flex: 1 1 auto; background: #1c2230; color: #cfe6ff; border: 1px solid #2c3547; border-radius: 5px; padding: 4px 6px; font-size: 12px; cursor: pointer; }
+.pipe-extend-row button:hover:not([disabled]) { background: #24304a; }
+.pipe-extend-row button[disabled] { opacity: 0.45; cursor: default; }
 .flow-status { padding: 2px 7px; border: 1px solid #42617a; border-radius: 10px; color: #bee1ff; background: #1a3244; font-size: 10px; }
 .pipe-flow-setup { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid #384b5d;
   border-radius: 5px; background: #1b242c; }
@@ -573,6 +593,16 @@
   color: #cfd8e0; cursor: pointer; font: inherit; line-height: 1; padding: 0; }
 .detail-ctrl button:hover { background: #2c313a; }
 
+/* flow highlight color picker (sits beside the ▶ Flow status pill) */
+.flow-color-pick { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; position: relative; }
+.flow-color-pick .flow-swatch { width: 16px; height: 16px; border-radius: 3px; border: 1px solid #5a6b7c; }
+.flow-color-pick input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; }
+
+/* fitting symbol-size slider (inspector) */
+.size-ctrl { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; }
+.size-ctrl input[type="range"] { flex: 1 1 auto; min-width: 0; }
+.size-ctrl .size-val { color: #9fb4c6; font-size: 11px; min-width: 34px; text-align: right; }
+
 /* ── Reference-image panel (left rail) ── */
 .bg-panel { border-top: 1px solid #2a2a2a; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .bg-panel .row { display: flex; gap: 6px; }
@@ -616,6 +646,16 @@
 .equipment-port-row input, .equipment-port-row select { min-width: 0; width: 100%; box-sizing: border-box; background: #171b20;
   color: #e4ebf2; border: 1px solid #414954; border-radius: 3px; padding: 3px 4px; font: 10px system-ui, sans-serif; }
 .equipment-port-row .pipe-unlink { padding: 2px; }
+
+/* Boundary-connector panel lives in the narrow (250px) left rail — wrap the row instead of the 5-col grid. */
+.bound-panel { display: flex; flex-direction: column; gap: 5px; }
+.bound-panel .bg-add.on { background: #15334f; border-color: #7cc6ff; color: #cfe6ff; }
+.bound-panel .equipment-port-columns { display: none; }
+.bound-panel .equipment-port-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; cursor: pointer; }
+.bound-panel .equipment-port-row .port-label { flex: 1 1 130px; }
+.bound-panel .equipment-port-row .pipe-unlink { flex: 0 0 auto; width: 22px; height: 22px; }
+.bound-panel .equipment-port-row select { flex: 1 1 66px; }
+.bound-panel .equipment-port-row .port-circuit { flex: 1 1 56px; }
 .pipe-end-attachment { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 5px;
   padding: 5px 6px; border: 1px solid #343a43; border-radius: 4px; background: #20242a; font-size: 10px; }
 .pipe-end-attachment > span { color: #91a0af; text-transform: uppercase; }

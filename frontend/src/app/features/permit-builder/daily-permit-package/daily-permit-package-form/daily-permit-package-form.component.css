@@ -171,3 +171,60 @@
 
 .multi-area-note label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .multi-area-counts { margin-left: auto; color: var(--secondary-text); font-weight: 600; }
+
+/* Operator area / equipment / scope override — applies to every permit in the package. */
+.operator-scope-section {
+  margin: 0 0 12px; padding: 8px 12px; border-radius: 6px;
+  background: var(--secondary-background, #f0f2f5);
+  color: var(--primary-text); font-size: 13px;
+}
+
+/* A request with no area cannot produce a correct permit, so it is called out rather than
+   left as one more grey row the operator can scroll past. */
+.operator-scope-section.needs-area {
+  background: var(--warning-background, #fff4e5);
+  border-left: 3px solid var(--warning, #e08600);
+}
+
+.operator-scope-summary { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.operator-scope-summary button { margin-left: auto; }
+.area-missing { color: var(--warning-text, #8a5200); }
+.override-badge { font-weight: 600; }
+.override-stamp, .override-none { color: var(--secondary-text); }
+
+.operator-scope-editor { margin-top: 10px; }
+.editor-hint { margin: 0 0 10px; color: var(--secondary-text); }
+.operator-scope-editor fieldset {
+  border: 1px solid var(--border-color, #d0d4da); border-radius: 6px;
+  margin: 0 0 10px; padding: 8px 12px;
+}
+.operator-scope-editor legend { padding: 0 4px; font-weight: 600; }
+
+.area-choice { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 3px 0; }
+.area-choice > label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+/* Per-area flags are indented and lighter: they are qualifiers on a chosen area, not choices
+   of the same rank as the area itself. */
+.area-flags {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-left: 12px; padding-left: 12px;
+  border-left: 2px solid var(--border-color, #d0d4da);
+  color: var(--secondary-text);
+}
+.area-flags label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.space-name { min-width: 220px; }
+
+.operator-scope-editor .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.operator-scope-editor textarea { resize: vertical; font: inherit; }
+.override-error { color: var(--error, #c0392b); margin: 0 0 8px; }
+.editor-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.editor-actions .secondary { background: transparent; border: 1px solid var(--border-color, #d0d4da); }
+
+/* Chosen-area list under the map: the map says WHICH areas, this says what happens in each. */
+.chosen-areas { margin-top: 10px; }
+.no-areas-yet { margin: 10px 0 0; color: var(--secondary-text); font-style: italic; }
+.area-name { font-weight: 600; min-width: 140px; }
+.remove-area {
+  margin-left: auto; border: none; background: transparent; cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 0 6px; color: var(--secondary-text);
+}
+.remove-area:hover { color: var(--error, #c0392b); }

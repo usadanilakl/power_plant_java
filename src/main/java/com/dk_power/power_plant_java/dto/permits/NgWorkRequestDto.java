@@ -53,6 +53,31 @@ public class NgWorkRequestDto extends BaseDto {
     /** Derived, read-only: no work area is set, so an operator has to pick one before permits. */
     private Boolean areaNotSpecified;
 
+    // ---- Operator processing override -----------------------------------------------------
+    //
+    // What the operator decided this job's areas / equipment / scope actually are, kept apart
+    // from what the requester submitted so the request still shows what was asked for. Written
+    // back to the entity; the `effective*` triplet below is derived and never is.
+
+    /** Operator's area selection. Empty means "no override — use what the requester declared". */
+    private java.util.List<com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea> operatorWorkAreas;
+    private String operatorAffectedEquipment;
+    private String operatorWorkScope;
+    private String operatorOverrideBy;
+    private String operatorOverrideAt;
+
+    /**
+     * Derived, read-only: what permit generation should actually use — the operator's value
+     * where they set one, the requester's otherwise.
+     *
+     * <p>Sent rather than recomputed in Angular so the precedence rule lives in exactly one
+     * place. Two copies of "which value wins" is how a permit ends up naming an area nobody
+     * picked, and the UI needs the override fields separately anyway to render the editor.
+     */
+    private java.util.List<com.dk_power.power_plant_java.entities.permits.pojo.WorkRequestArea> effectiveWorkAreas;
+    private String effectiveAffectedEquipment;
+    private String effectiveWorkScope;
+
     /** Job the grouping-key match suggests. A suggestion only — nothing is attached until an operator confirms. */
     private Long suggestedJobLogId;
 

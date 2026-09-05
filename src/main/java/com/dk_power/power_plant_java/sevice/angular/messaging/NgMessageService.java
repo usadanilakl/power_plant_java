@@ -6,10 +6,12 @@ import com.dk_power.power_plant_java.entities.messaging.Message;
 import com.dk_power.power_plant_java.mappers.messaging.MessageMapper;
 import com.dk_power.power_plant_java.repository.messaging.MessageRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoQaWorklogService;
 import com.dk_power.power_plant_java.sevice.messaging.MessagingUserContextService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,8 @@ public class NgMessageService implements NgCrudService<Message, MessageDto, Mess
     private final MessageMapper mapper;
     private final NgConversationService ngConversationService;
     private final MessagingUserContextService messagingUserContextService;
+    /** Optional — Maximo-configured nodes only; plain messaging works without it. */
+    private final ObjectProvider<MaximoQaWorklogService> qaWorklog;
 
     @Override
     public MessageRepo getRepo() {
@@ -118,6 +122,15 @@ public class NgMessageService implements NgCrudService<Message, MessageDto, Mess
         ngConversationService.save(conversation);
 
         Message saved = repo.save(message);
+
+        // Mirror an answer on a WO Q&A thread to the WO's Maximo worklog (system of record) after commit — best-effort.
+        if (NgConversationService.WORK_ORDER_ENTITY_TYPE.equals(conversation.getEntityType())) {
+            final Long authorId = currentUserId;
+            final Long messageId = saved.getId();
+            final String content = saved.getContent();
+            NgConversationService.runAfterCommit(() -> qaWorklog.ifAvailable(s -> s.writeAnswer(conversation, authorId, content, messageId)));
+        }
+
         return mapper.convertToDto(saved);
     }
 }

@@ -40,6 +40,9 @@ public class ConversationMapper implements BaseMapper {
         dto.setInitiatorUnreadCount(entity.getInitiatorUnreadCount());
         dto.setResponderUnreadCount(entity.getResponderUnreadCount());
         dto.setCurrentUserUnreadCount(resolveCurrentUserUnreadCount(entity));
+        dto.setMaximoWonum(entity.getMaximoWonum());
+        dto.setMaximoHref(entity.getMaximoHref());
+        dto.setDirectedUserIds(entity.getDirectedUserIds());
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setDateCreated(entity.getDateCreated());
         dto.setDateModified(entity.getDateModified());
@@ -63,6 +66,9 @@ public class ConversationMapper implements BaseMapper {
         entity.setLastMessageAt(source.getLastMessageAt());
         entity.setInitiatorUnreadCount(source.getInitiatorUnreadCount() != null ? source.getInitiatorUnreadCount() : 0);
         entity.setResponderUnreadCount(source.getResponderUnreadCount() != null ? source.getResponderUnreadCount() : 0);
+        entity.setMaximoWonum(source.getMaximoWonum());
+        entity.setMaximoHref(source.getMaximoHref());
+        entity.setDirectedUserIds(source.getDirectedUserIds());
         return entity;
     }
 

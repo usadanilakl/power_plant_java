@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -35,6 +35,22 @@ import { MessageDto } from '../../models/messaging/message.model';
                 <label class="form-label">Message</label>
                 <textarea class="reply-input" [(ngModel)]="newMessageContent" placeholder="Type your message..." rows="4"></textarea>
               </div>
+              @if (isWoThread()) {
+                <div class="form-group">
+                  <button type="button" class="directed-toggle" (click)="showDirect.set(!showDirect())">
+                    {{ selectedDirected().size ? ('📣 Directed to ' + selectedDirected().size + ' — everyone still sees it') : '+ Direct at specific people (optional)' }}
+                  </button>
+                  @if (showDirect()) {
+                    <div class="directed-list">
+                      <p class="directed-hint">They see it first in WO Questions — it doesn't hide the question from anyone.</p>
+                      @for (u of directableUsers(); track u.id) {
+                        <label class="directed-opt"><input type="checkbox" [checked]="selectedDirected().has(u.id)" (change)="toggleDirected(u.id)" /> {{ u.name }}</label>
+                      }
+                      @if (!directableUsers().length) { <span class="directed-hint">No people to direct to.</span> }
+                    </div>
+                  }
+                </div>
+              }
               <button class="send-btn compose-send-btn" (click)="createConversation()" [disabled]="!newSubject.trim() || !newMessageContent.trim() || isSending()">
                 Start Conversation
               </button>
@@ -403,6 +419,44 @@ import { MessageDto } from '../../models/messaging/message.model';
     .compose-send-btn {
       align-self: flex-end;
     }
+
+    .directed-toggle {
+      align-self: flex-start;
+      background: none;
+      border: none;
+      color: var(--accent-color, #007bff);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 2px 0;
+    }
+
+    .directed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border: 1px solid var(--border-color, #dee2e6);
+      border-radius: 6px;
+      padding: 8px 10px;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    .directed-hint {
+      font-size: 11px;
+      color: var(--secondary-text, #6c757d);
+      margin: 0 0 2px;
+    }
+
+    .directed-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--primary-text, #212529);
+    }
   `]
 })
 export class ConversationDialogComponent {
@@ -423,6 +477,12 @@ export class ConversationDialogComponent {
   replyContent = '';
   newSubject = '';
   newMessageContent = '';
+
+  // WO Q&A: optional directed-recipients picker (only for Maximo-WO threads).
+  isWoThread = computed(() => this.dialogService.entityType() === 'MaximoWorkOrder');
+  directableUsers = signal<{ id: number; name: string }[]>([]);
+  selectedDirected = signal<Set<number>>(new Set());
+  showDirect = signal(false);
 
   constructor() {
     this.authService.currentUser$
@@ -531,7 +591,22 @@ export class ConversationDialogComponent {
   startCompose(): void {
     this.newSubject = '';
     this.newMessageContent = '';
+    this.selectedDirected.set(new Set());
+    this.showDirect.set(false);
+    // WO threads offer a directed-recipients picker — fetch the plant-users list once.
+    if (this.isWoThread() && this.directableUsers().length === 0) {
+      this.conversationService.getDirectableUsers().subscribe({
+        next: (r) => this.directableUsers.set(r.responseData ?? []),
+        error: () => {}
+      });
+    }
     this.dialogService.startComposing();
+  }
+
+  toggleDirected(id: number): void {
+    const s = new Set(this.selectedDirected());
+    if (s.has(id)) s.delete(id); else s.add(id);
+    this.selectedDirected.set(s);
   }
 
   cancelCompose(): void {
@@ -553,6 +628,9 @@ export class ConversationDialogComponent {
       entityId,
       subject,
       initialMessageContent: content,
+      // WO threads stamp the WO number (display + inbox) and the optional directed-recipients (routing hint).
+      maximoWonum: this.isWoThread() ? (this.dialogService.maximoWonum() ?? undefined) : undefined,
+      directedUserIds: this.isWoThread() && this.selectedDirected().size ? [...this.selectedDirected()].join(',') : null,
     });
     this.conversationService.startConversation(dto).subscribe({
       next: (response) => {

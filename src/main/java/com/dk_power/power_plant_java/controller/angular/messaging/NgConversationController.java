@@ -51,6 +51,32 @@ public class NgConversationController {
         }
     }
 
+    /** Active users {id, name} for the WO Q&A directed-recipients picker (plant-accessible). */
+    @GetMapping("/directable-users")
+    public ResponseEntity<NgApiResponse<List<java.util.Map<String, Object>>>> getDirectableUsers() {
+        try {
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(service.getDirectableUsers(), "Directable users retrieved"));
+        } catch (Exception e) {
+            log.error("[Conversation] Failed to get directable users", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** The WO Q&A inbox: all OPEN Maximo-WO conversations (inclusive), newest first, each flagged directedToMe. */
+    @GetMapping("/wo-open")
+    public ResponseEntity<NgApiResponse<List<ConversationDto>>> getOpenWorkOrderQuestions() {
+        try {
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(service.getOpenWorkOrderQuestions(), "Open WO questions retrieved"));
+        } catch (Exception e) {
+            log.error("[Conversation] Failed to get open WO questions", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     @PostMapping
     public ResponseEntity<NgApiResponse<ConversationDto>> startConversation(@RequestBody ConversationDto dto) {
         try {

@@ -95,9 +95,13 @@
             date:  req.date,
             forman:  req.forman,
             fireWatch:  req.fireWatch,
+            location: req.location,
             meterModel: "RKI GX-3R PRO",
-            meterNum:"N", 
+            meterNum:"N",
             specialInstructions:"Do not swim in the water down there",
+            // areaIsClean and noCombustibleDustOrDebrisPresent are still valid DTO fields but
+            // the 2026-08-27 permit dropped their rows, so the automation has nowhere to put
+            // them. Left in so this payload keeps exercising the tolerant-load path.
             measures:{
               areaIsClean:true,
               flammablesAreSecured:true,
@@ -111,7 +115,26 @@
               fireWatchIsAwareOfDuties:true,
               fireExtinguisherPresent:true,
               fireProtectionIsInService:true
-            }
+            },
+            // ---- 2026-08-27 revision: the sections the rebuilt flow fills ----
+            workType:{ welding:true, griding:false, cutting:true, brazing:false,
+                       otherDescription:"" },
+            fireProtectionInService:true,
+            fireProtectionNotInService:false,
+            meterCalDate: req.date,
+            timeOfInitialTest:"07:30",
+            initialTestInitials:"MM",
+            initialTestResult:"0",
+            contMeterModel:"RKI GX-3R PRO",
+            contMeterNum:"N-2",
+            contMeterCalDate: req.date,
+            isAirMonitoringRegisteredOnConfinedSpace:false,
+            fireWatch1Hour:false,
+            fireWatch30Min:true,
+            fireWatchNotRequired:false,
+            issuerSignature: req.requestedBy,
+            approvedDate: req.date,
+            approvedTime:"07:45"
           }
         ],
         confinedSpaces:[

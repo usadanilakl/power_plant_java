@@ -40,6 +40,10 @@ export interface ConversationModel extends BaseModel {
   createdBy: string;
   dateCreated: string;
   dateModified: string;
+  // WO Q&A extension
+  maximoWonum?: string;
+  directedUserIds?: string | null;
+  directedToMe?: boolean;
 }
 
 export class ConversationDto extends BaseDto implements ConversationModel {
@@ -59,6 +63,9 @@ export class ConversationDto extends BaseDto implements ConversationModel {
   createdBy: string;
   dateCreated: string;
   dateModified: string;
+  maximoWonum?: string;
+  directedUserIds?: string | null;
+  directedToMe?: boolean;
 
   constructor(data: Partial<ConversationModel> = {}) {
     super(data);
@@ -78,6 +85,9 @@ export class ConversationDto extends BaseDto implements ConversationModel {
     this.createdBy = data.createdBy || '';
     this.dateCreated = data.dateCreated || '';
     this.dateModified = data.dateModified || '';
+    this.maximoWonum = data.maximoWonum;
+    this.directedUserIds = data.directedUserIds ?? null;
+    this.directedToMe = data.directedToMe;
   }
 
   override toJson(): any {
@@ -90,6 +100,8 @@ export class ConversationDto extends BaseDto implements ConversationModel {
       subject: this.subject,
       status: this.status,
       initialMessageContent: this.initialMessageContent,
+      maximoWonum: this.maximoWonum ?? null,
+      directedUserIds: this.directedUserIds ?? null,
     };
   }
 
@@ -113,6 +125,9 @@ export class ConversationDto extends BaseDto implements ConversationModel {
       createdBy: json.createdBy || '',
       dateCreated: normalizeDateTime(json.dateCreated),
       dateModified: normalizeDateTime(json.dateModified),
+      maximoWonum: json.maximoWonum,
+      directedUserIds: json.directedUserIds ?? null,
+      directedToMe: json.directedToMe,
     });
   }
 }

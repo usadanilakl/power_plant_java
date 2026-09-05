@@ -138,4 +138,19 @@ public interface ConversationRepo extends BaseRepository<Conversation> {
         @Param("entityType") String entityType,
         @Param("entityId") Long entityId,
         @Param("userId") Long userId);
+
+    /**
+     * All conversations of an entity type in a given status, newest activity first. The WO Q&A inbox uses this
+     * (entityType='MaximoWorkOrder', status=OPEN) — a cheap local query over the already-synced Conversation
+     * table, so the inbox never re-fetches Maximo.
+     */
+    @Query("""
+        SELECT c FROM Conversation c
+        WHERE c.entityType = :entityType
+          AND c.status = :status
+        ORDER BY c.lastMessageAt DESC, c.id DESC
+        """)
+    List<Conversation> findByEntityTypeAndStatusOrderByLastMessageAtDesc(
+        @Param("entityType") String entityType,
+        @Param("status") Conversation.Status status);
 }

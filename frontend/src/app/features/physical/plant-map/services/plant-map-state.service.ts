@@ -66,6 +66,11 @@ export interface PipeFitting {
   name?: string; tag?: string; desc?: string; double?: boolean; tag2?: string;
   nodeId?: number; // the fitting's PhysicalObject id (child of the pipe node)
   closed?: boolean; // valve state for the visual flow sim (a closed valve blocks flow through its pipe)
+  size?: number;    // symbol scale on the canvas (1 = default); rides the fitting JSON, no schema change
+  /** Permitted flow direction through this valve, relative to the pipe's A→B geometry: 'forward' = A→B only,
+   *  'reverse' = B→A only, 'both'/undefined = either way. Any valve can be made one-way (a check valve just
+   *  defaults to 'forward'). The flow sim turns a directional valve into a one-way gate. */
+  checkFlow?: 'forward' | 'reverse' | 'both';
 }
 /** A stable branch point on a pipe body. Topology refers to it as terminal `T:<id>`. */
 export interface PipeTap { id: string; at: { x: number; y: number }; }
@@ -176,6 +181,9 @@ export class PlantMapStateService {
   // ── parent boundary (this node's footprint, from its box on the parent's canvas) ──
   boundary = signal<{ x: number; y: number; w: number; h: number } | null>(null);
   boundaryPorts = signal<EquipmentPort[]>([]);
+  /** The parent's placement row for THIS node's box — so boundary-connector edits made from inside can be written
+   *  straight back to it (one targeted PUT, no complete-set churn on the parent's diagram). Null at the root. */
+  private boundaryPlacement: DiagramPlacementDto | null = null;
 
   // ── reference underlay (satellite / plot plan traced beneath the footprints) ──
   /** Servable URL of the current canvas's reference image (a synced file, shared across devices; null = none). */
@@ -565,6 +573,7 @@ export class PlantMapStateService {
    * children (and keeps child layouts proportional to how the node reads on the level above). Root → no frame.
    */
   private async computeBoundary(node: PhysicalObjectNode | null, breadcrumb: PhysicalObjectNode[]) {
+    this.boundaryPlacement = null;
     if (!node || breadcrumb.length < 2) return;
     const parent = breadcrumb[breadcrumb.length - 2];
     if (parent?.diagramId == null) return;
@@ -576,7 +585,27 @@ export class PlantMapStateService {
       const scale = 1100 / Math.max(p.width, p.height);
       this.boundary.set({ x: 24, y: 24, w: Math.round(p.width * scale), h: Math.round(p.height * scale) });
       this.boundaryPorts.set(this.equipmentPortsFromJson(p.svgPath));
+      this.boundaryPlacement = p; // remember it so from-inside connector edits can be written back
     } catch { /* no boundary */ }
+  }
+
+  /**
+   * Set this node's boundary connectors (edited from INSIDE the object) and persist them onto the parent's box
+   * placement — a single targeted PUT so it never disturbs the rest of the parent's diagram. The same port then
+   * bridges the interior route and the parent route. In-memory update is synchronous so the map + flow refresh at
+   * once; persistence is best-effort (the visible error surfaces on failure).
+   */
+  async setBoundaryPorts(ports: EquipmentPort[]) {
+    this.boundaryPorts.set(ports);
+    const placement = this.boundaryPlacement;
+    if (!placement?.id) return;
+    let parsed: any = {};
+    try { parsed = placement.svgPath ? JSON.parse(placement.svgPath) : {}; } catch { parsed = {}; }
+    const dto: DiagramPlacementDto = { ...placement, svgPath: JSON.stringify({ ...parsed, equipmentPorts: ports }) };
+    try {
+      await firstValueFrom(this.placementApi.update(placement.id, dto));
+      this.boundaryPlacement = dto; // keep the local snapshot in step for the next edit
+    } catch (e: any) { this.error.set(this.msg(e)); }
   }
 
   /** Persist any pending changes for the current node, then move to another node (drill in or breadcrumb up). */

@@ -16,6 +16,7 @@ export class ConversationDialogService {
   private _entityId = signal(0);
   private _selectedConversationId = signal<number | null>(null);
   private _isComposing = signal(false);
+  private _maximoWonum = signal<string | null>(null);
   private _onOpen = new Subject<void>();
 
   private _conversationChanged = new Subject<{ entityType: string; entityId: number } | null>();
@@ -26,6 +27,8 @@ export class ConversationDialogService {
   entityId = this._entityId.asReadonly();
   selectedConversationId = this._selectedConversationId.asReadonly();
   isComposing = this._isComposing.asReadonly();
+  /** WO number for a Maximo-WO thread (stamped onto new conversations for display + the inbox); null otherwise. */
+  maximoWonum = this._maximoWonum.asReadonly();
   onOpen$ = this._onOpen.asObservable();
 
   constructor() {
@@ -60,19 +63,21 @@ export class ConversationDialogService {
     this._conversationChanged.next({ entityType, entityId });
   }
 
-  open(entityType: string, entityId: number, conversationId: number | null = null): void {
+  open(entityType: string, entityId: number, conversationId: number | null = null, maximoWonum: string | null = null): void {
     this._entityType.set(entityType);
     this._entityId.set(entityId);
     this._selectedConversationId.set(conversationId);
+    this._maximoWonum.set(maximoWonum);
     this._isComposing.set(false);
     this._isVisible.set(true);
     this._onOpen.next();
   }
 
-  openCompose(entityType: string, entityId: number): void {
+  openCompose(entityType: string, entityId: number, maximoWonum: string | null = null): void {
     this._entityType.set(entityType);
     this._entityId.set(entityId);
     this._selectedConversationId.set(null);
+    this._maximoWonum.set(maximoWonum);
     this._isComposing.set(true);
     this._isVisible.set(true);
     this._onOpen.next();
@@ -102,6 +107,7 @@ export class ConversationDialogService {
     this._entityType.set('');
     this._entityId.set(0);
     this._selectedConversationId.set(null);
+    this._maximoWonum.set(null);
     this._isComposing.set(false);
   }
 }

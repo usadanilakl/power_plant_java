@@ -68,6 +68,11 @@ public class ConfinedSpaceBuildFlow {
         driver.sleep(properties.getInterStepDelayMs());
         driver.parkMouse();
         driver.sleep(FORM_SETTLE_MS);
+        // The Confined Space patterns have not been recaptured at the shared 2026-09-03 scale,
+        // so this flow does not calibrate — but a Safe Work or Hot Work build earlier in this
+        // JVM may have left a zoom factor set, which would rescale the CS crops to nothing.
+        // Reset to the scale these patterns were captured at.
+        driver.resetScale();
         driver.waitFor(RedTagPattern.CS_SECTION_HEADER_GENERAL, 15);
         return "Confined Space form opened (" + cs.getCsType() + ")";
     }

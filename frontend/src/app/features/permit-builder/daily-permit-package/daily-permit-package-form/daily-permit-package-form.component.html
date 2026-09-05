@@ -40,6 +40,116 @@
       <app-work-request-display [workRequest]="workRequest"></app-work-request-display>
     </div>
   }
+  <!--
+    Area / equipment / scope the operator decided this job actually covers. Applies to every
+    permit below and to any added to the package later; the request itself keeps showing what
+    the requester submitted.
+  -->
+  <div class="operator-scope-section" [class.needs-area]="workRequest().areaNotSpecified">
+    <div class="operator-scope-summary">
+      @if (workRequest().areaNotSpecified && !hasOperatorOverride()) {
+        <strong class="area-missing">No area on this request — pick one before issuing permits.</strong>
+      } @else if (hasOperatorOverride()) {
+        <span class="override-badge">Area / equipment / scope set by operator</span>
+        <span class="override-stamp">
+          {{ workRequest().operatorOverrideBy }}
+          @if (workRequest().operatorOverrideAt) { · {{ workRequest().operatorOverrideAt }} }
+        </span>
+      } @else {
+        <span class="override-none">Using the areas, equipment and scope as submitted.</span>
+      }
+      <button type="button" (click)="openOverridePanel()" [disabled]="!workRequest().id">
+        {{ hasOperatorOverride() ? 'Change' : 'Set area / equipment / scope' }}
+      </button>
+    </div>
+
+    @if (overridePanelOpen()) {
+      <div class="operator-scope-editor">
+        <p class="editor-hint">
+          Applies to every permit in this package, including ones generated later. Overrides what
+          the requester submitted; it does not change the request.
+        </p>
+
+        <!--
+          Same map the requester picked on. Clicking a shape ADDS it — removal is the × in the
+          list below, so a stray click on the map cannot silently drop an area from a permit.
+        -->
+        <fieldset>
+          <legend>Areas — click the map to add</legend>
+          <app-work-area-map-picker
+            [chosenWorkAreaIds]="chosenAreaIds()"
+            (workAreaSelected)="onMapAreaPicked($event)"
+          ></app-work-area-map-picker>
+
+          @if (overrideAreas().length) {
+            <div class="chosen-areas">
+              @for (chosen of overrideAreas(); track chosen.id) {
+                <div class="area-choice">
+                  <span class="area-name">{{ chosen.name }}</span>
+                  <span class="area-flags">
+                    <label>
+                      <input type="radio" name="overridePrimary" [checked]="!!chosen.primary"
+                             (change)="patchOverrideArea(chosen.id, { primary: true })" />
+                      Primary
+                    </label>
+                    <label>
+                      <input type="checkbox" [checked]="!!chosen.hotWork"
+                             (change)="patchOverrideArea(chosen.id, { hotWork: $any($event.target).checked })" />
+                      Hot work here
+                    </label>
+                    <label>
+                      <input type="checkbox" [checked]="!!chosen.confinedSpaceEntry"
+                             (change)="patchOverrideArea(chosen.id, { confinedSpaceEntry: $any($event.target).checked })" />
+                      Confined space entry
+                    </label>
+                    @if (chosen.confinedSpaceEntry) {
+                      <input type="text" class="space-name" placeholder="Space (if not the area name)"
+                             [value]="chosen.spaceName ?? ''"
+                             (input)="patchOverrideArea(chosen.id, { spaceName: $any($event.target).value })" />
+                    }
+                  </span>
+                  <button type="button" class="remove-area" title="Remove this area"
+                          (click)="removeOverrideArea(chosen.id)">&times;</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="no-areas-yet">No areas chosen yet — click one on the map.</p>
+          }
+        </fieldset>
+
+        <div class="form-group">
+          <label for="overrideEquipment">Affected equipment</label>
+          <input type="text" id="overrideEquipment" [value]="overrideEquipment()"
+                 (input)="overrideEquipment.set($any($event.target).value)"
+                 placeholder="Leave blank to use what was submitted" />
+        </div>
+
+        <div class="form-group">
+          <label for="overrideScope">Work scope</label>
+          <textarea id="overrideScope" rows="3" [value]="overrideScope()"
+                    (input)="overrideScope.set($any($event.target).value)"
+                    placeholder="Leave blank to use what was submitted"></textarea>
+        </div>
+
+        @if (overrideError()) { <p class="override-error">{{ overrideError() }}</p> }
+
+        <div class="editor-actions">
+          <button type="button" (click)="applyOverride()" [disabled]="overrideSaving()">
+            {{ overrideSaving() ? 'Saving…' : 'Apply to all permits' }}
+          </button>
+          @if (hasOperatorOverride()) {
+            <button type="button" class="secondary" (click)="clearOverride()" [disabled]="overrideSaving()">
+              Revert to submitted
+            </button>
+          }
+          <button type="button" class="secondary" (click)="overridePanelOpen.set(false)"
+                  [disabled]="overrideSaving()">Cancel</button>
+        </div>
+      </div>
+    }
+  </div>
+
   <div class="forms-container">
     <!--
       One permit per area where it is needed. Confined Space and Hot Work are inherently per-area —
@@ -48,7 +158,7 @@
     -->
     @if (isMultiArea()) {
       <div class="multi-area-note">
-        This request covers {{ workRequest().workAreas.length }} areas.
+        This request covers {{ effectiveRequest().workAreas.length }} areas.
         <label>
           <input type="checkbox" [checked]="splitSafeWorkPerArea()"
                  (change)="splitSafeWorkPerArea.set($any($event.target).checked)" />

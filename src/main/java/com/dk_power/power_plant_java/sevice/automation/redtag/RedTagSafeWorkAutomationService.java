@@ -105,6 +105,12 @@ public class RedTagSafeWorkAutomationService {
     }
 
     private Map<String, Supplier<String>> buildActions(SafeWorkDto sw) {
+        // Resolved here, on the caller's thread, so the lazy package -> lotos walk happens
+        // inside NgSafeWorkService's transaction. The steps below run later on the engine's
+        // background thread, where that association is no longer loadable.
+        List<Integer> lotoBoxNumbers = safeWorkService.getLotoBoxNumbers(sw.getId());
+        log.info("[RedTag] Safe Work {} package LOTO lock boxes: {}", sw.getId(), lotoBoxNumbers);
+
         Map<String, Supplier<String>> actions = new LinkedHashMap<>();
         actions.put("open-app", loginFlow::ensureAppOpen);
         actions.put("login", loginFlow::ensureLoggedIn);
@@ -113,7 +119,7 @@ public class RedTagSafeWorkAutomationService {
         actions.put("fill-hazards", () -> safeWorkBuildFlow.fillHazards(sw));
         actions.put("fill-permits", () -> safeWorkBuildFlow.fillPermits(sw));
         actions.put("fill-ppe", () -> safeWorkBuildFlow.fillPpe(sw));
-        actions.put("fill-footer", () -> safeWorkBuildFlow.fillFooter(sw));
+        actions.put("fill-footer", () -> safeWorkBuildFlow.fillFooter(sw, lotoBoxNumbers));
         actions.put("save", () -> {
             safeWorkBuildFlow.save();
             String number = safeWorkBuildFlow.readPermitNumber();

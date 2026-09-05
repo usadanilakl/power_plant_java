@@ -26,4 +26,11 @@ public class ConversationDto extends BaseDto {
     private Integer responderUnreadCount = 0;
     private Integer currentUserUnreadCount = 0;
     private String initialMessageContent;
+    // ── WO Q&A extension ──
+    private String maximoWonum;
+    private String maximoHref;
+    /** Comma-joined User.id list directed at (routing hint only). */
+    private String directedUserIds;
+    /** Transient (not persisted): true when the current user's id is in directedUserIds — set server-side for the inbox. */
+    private Boolean directedToMe;
 }

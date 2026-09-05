@@ -201,6 +201,65 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         return workRequestMapper.convertToNgDto(saved);
     }
 
+    // ====================== Operator processing override ======================
+
+    /**
+     * Records the operator's decision about which areas, equipment and scope this request really
+     * covers. Every permit generated from the request — now, and any added to the package later —
+     * reads these in preference to what the requester submitted.
+     *
+     * <p>The requester's own {@code location} / {@code affectedEquipment} / {@code workScope} are
+     * left untouched. A permit is issued against what somebody asked for, and the request has to
+     * keep saying what that was; the override says what the operator decided instead, and both
+     * are visible.
+     *
+     * <p>A blank string clears that one field back to the requester's value — the operator
+     * withdrawing their correction — which is why null (field absent) and blank (explicitly
+     * cleared) are treated differently here. Areas are all-or-nothing: an empty list is
+     * "no override".
+     */
+    public NgWorkRequestDto setOperatorOverride(Long id, NgWorkRequestDto override, String performedBy) {
+        WorkRequest entity = getEntityById(id);
+        if (override.getOperatorWorkAreas() != null) {
+            entity.setOperatorWorkAreas(override.getOperatorWorkAreas());
+        }
+        if (override.getOperatorAffectedEquipment() != null) {
+            entity.setOperatorAffectedEquipment(blankToNull(override.getOperatorAffectedEquipment()));
+        }
+        if (override.getOperatorWorkScope() != null) {
+            entity.setOperatorWorkScope(blankToNull(override.getOperatorWorkScope()));
+        }
+        if (entity.hasOperatorOverride()) {
+            entity.setOperatorOverrideBy(performedBy);
+            entity.setOperatorOverrideAt(java.time.LocalDateTime.now().toString());
+        } else {
+            // Fully withdrawn — drop the attribution too, so the screens do not show a stamp
+            // against a request that has no override on it.
+            entity.setOperatorOverrideBy(null);
+            entity.setOperatorOverrideAt(null);
+        }
+        log.info("[WorkRequest] Operator override on {} by {}: areas={} equipment='{}' scope='{}'",
+                id, performedBy, entity.getOperatorWorkAreas().size(),
+                entity.getOperatorAffectedEquipment(), entity.getOperatorWorkScope());
+        return workRequestMapper.convertToNgDto(save(entity));
+    }
+
+    /** Removes the override entirely, so generation falls back to what the requester submitted. */
+    public NgWorkRequestDto clearOperatorOverride(Long id) {
+        WorkRequest entity = getEntityById(id);
+        entity.setOperatorWorkAreasJson(null);
+        entity.setOperatorAffectedEquipment(null);
+        entity.setOperatorWorkScope(null);
+        entity.setOperatorOverrideBy(null);
+        entity.setOperatorOverrideAt(null);
+        log.info("[WorkRequest] Operator override cleared on {}", id);
+        return workRequestMapper.convertToNgDto(save(entity));
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
     // ====================== Action Methods (Request Details, Cancel) ======================
 
     /**

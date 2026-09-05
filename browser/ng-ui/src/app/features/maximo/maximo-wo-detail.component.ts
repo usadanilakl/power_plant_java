@@ -6,12 +6,13 @@ import { MaximoSyncService } from './maximo-sync.service';
 import { MaximoWoFilesComponent } from './maximo-wo-files.component';
 import { MaximoWoNotesComponent } from './maximo-wo-notes.component';
 import { MaximoWoLotoLinkComponent } from './maximo-wo-loto-link.component';
+import { MaximoWoQaComponent } from './maximo-wo-qa.component';
 import {
   COMPLETABLE_WO_STATUSES, MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, MaximoWorkOrder,
   ReorderLine, ReorderResult, statusClass,
 } from './maximo.model';
 
-type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
+type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history' | 'qa';
 
 /**
  * Bottom-sheet for a work order: read its details, complete its child tasks, and complete the WO itself
@@ -21,7 +22,7 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
 @Component({
   selector: 'app-maximo-wo-detail',
   standalone: true,
-  imports: [DatePipe, MaximoWoFilesComponent, MaximoWoNotesComponent, MaximoWoLotoLinkComponent],
+  imports: [DatePipe, MaximoWoFilesComponent, MaximoWoNotesComponent, MaximoWoLotoLinkComponent, MaximoWoQaComponent],
   template: `
     <div class="wd-backdrop" (click)="close.emit()">
       <div class="wd-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Work order ' + wo.wonum" (click)="$event.stopPropagation()">
@@ -48,6 +49,9 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
           <button class="wd-tab" [class.active]="tab() === 'tasks'" (click)="openTasks()">Tasks</button>
           <button class="wd-tab" [class.active]="tab() === 'files'" (click)="tab.set('files')">Files</button>
           <button class="wd-tab" [class.active]="tab() === 'notes'" (click)="tab.set('notes')">Notes</button>
+          @if (wo.workorderid) {
+            <button class="wd-tab" [class.active]="tab() === 'qa'" (click)="tab.set('qa')">Q&amp;A</button>
+          }
           @if (wo.pmnum) {
             <button class="wd-tab" [class.active]="tab() === 'history'" (click)="openHistory()">History</button>
           }
@@ -140,6 +144,10 @@ type Tab = 'details' | 'tasks' | 'complete' | 'files' | 'notes' | 'history';
 
         @if (tab() === 'notes') {
           <app-maximo-wo-notes [href]="wo.href"></app-maximo-wo-notes>
+        }
+
+        @if (tab() === 'qa') {
+          <app-maximo-wo-qa [wo]="wo"></app-maximo-wo-qa>
         }
 
         @if (tab() === 'history') {

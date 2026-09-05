@@ -47,6 +47,7 @@
           </button>
           <button class="link" *ngIf="!showTransferLead()" (click)="startTransferLead()">⇄ Transfer lead</button>
           <button class="link" *ngIf="canComplete && !showReschedule()" (click)="startReschedule()">📅 Reschedule</button>
+          <button class="link" *ngIf="wo?.workorderid" (click)="askAboutWo()" title="Ask a question about this work order">💬 Q&amp;A</button>
         </div>
         <table class="kv">
           <tr *ngFor="let pair of detailFields">

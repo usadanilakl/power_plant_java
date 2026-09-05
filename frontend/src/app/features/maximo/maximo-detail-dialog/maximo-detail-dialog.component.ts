@@ -14,6 +14,7 @@ import { MaximoLocationPickerComponent } from '../maximo-location-picker/maximo-
 import { MaximoLocationTreePickerComponent } from '../maximo-location-tree-picker/maximo-location-tree-picker.component';
 import { MaximoAttachmentsComponent } from '../maximo-attachments/maximo-attachments.component';
 import { MaximoWoLotoLinkComponent } from '../maximo-wo-loto-link/maximo-wo-loto-link.component';
+import { ConversationDialogService } from '../../../shared/messaging/conversation-dialog.service';
 import { SmartFormComponent } from '../../../shared/reactive-form/smart-form/smart-form.component';
 import { FormField } from '../../../models/ui/form-field.model';
 import { MaximoFormFieldDef, MaximoFormSubmission, MaximoFormTemplate, ReorderLine, ReorderResult, computeReorderLines, isInventoryForm } from '../../../models/maximo/maximo-form.models';
@@ -51,6 +52,13 @@ export class MaximoDetailDialogComponent implements OnInit {
   private pmApi = inject(MaximoPmApiService);
   private formApi = inject(MaximoFormApiService);
   private auth = inject(AuthService);
+  private conversationDialog = inject(ConversationDialogService);
+
+  /** Open the WO Q&A thread (entityType 'MaximoWorkOrder', anchored by the numeric workorderid). Everyone who can
+   *  see the WO can read and reply; the shared conversation dialog renders the list + compose + thread. */
+  askAboutWo(): void {
+    if (this.wo?.workorderid) this.conversationDialog.open('MaximoWorkOrder', this.wo.workorderid, null, this.wo.wonum ?? null);
+  }
   @ViewChild(SmartFormComponent) smartForm?: SmartFormComponent;
 
   @Input({ required: true }) parent!: MaximoTicketParent;
